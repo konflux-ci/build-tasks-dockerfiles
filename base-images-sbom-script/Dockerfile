@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-39:1-186.1719562233@sha256:c949cb81a6f72ca157501949d07095e87b3c8f1a9ff5a69ff0a858faac21217b
+FROM registry.access.redhat.com/ubi9/python-39:1-192.1722518946@sha256:0176b477075984d5a502253f951d2502f0763c551275f9585ac515b9f241d73d
 
 WORKDIR /app
 COPY app/requirements.txt  /app
