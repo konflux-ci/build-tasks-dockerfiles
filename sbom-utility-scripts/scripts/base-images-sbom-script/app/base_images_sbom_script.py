@@ -1,5 +1,7 @@
-import json
 import argparse
+import hashlib
+import json
+import datetime
 import pathlib
 
 from collections import namedtuple
@@ -93,6 +95,13 @@ def parse_args():
     )
     parser.add_argument("--sbom", type=pathlib.Path, help="Path to the sbom file", required=True)
     parser.add_argument(
+        "--sbom-type",
+        choices=["spdx", "cyclonedx"],
+        default="cyclonedx",
+        help="Type of the sbom file",
+        required=True,
+    )
+    parser.add_argument(
         "--base-images-from-dockerfile",
         type=pathlib.Path,
         help="Path to the file containing base images extracted from Dockerfile via grep, sed and awk in the buildah "
@@ -127,10 +136,53 @@ def main():
         sbom = json.load(f)
 
     base_images_sbom_components = get_base_images_sbom_components(base_images_digests, is_last_from_scratch)
-    if "formulation" in sbom:
-        sbom["formulation"].append({"components": base_images_sbom_components})
+    if args.sbom_type == "cyclonedx":
+        if "formulation" in sbom:
+            sbom["formulation"].append({"components": base_images_sbom_components})
+        else:
+            sbom.update({"formulation": [{"components": base_images_sbom_components}]})
     else:
-        sbom.update({"formulation": [{"components": base_images_sbom_components}]})
+        packages = []
+        relationships = []
+        for component in base_images_sbom_components:
+            SPDXID = (
+                f"SPDXRef-{component['type']}-{component['name']}-"
+                + f"{hashlib.sha256(component['purl'].encode()).hexdigest()}"
+            )
+            packages.append(
+                {
+                    "SPDXID": SPDXID,
+                    "name": component["name"],
+                    "externalRefs": [
+                        {
+                            "referenceCategory": "PACKAGE-MANAGER",
+                            "referenceType": "purl",
+                            "referenceLocator": component["purl"],
+                        }
+                    ],
+                    "annotations": [
+                        {
+                            "annotator": "konflux",
+                            "annotationDate": datetime.datetime.now().isoformat(),
+                            "annotationType": "OTHER",
+                            "comment": json.dumps(
+                                {"name": property["name"], "value": property["value"]},
+                                separators=(",", ":"),
+                            ),
+                        }
+                        for property in component["properties"]
+                    ],
+                }
+            )
+            relationships.append(
+                {
+                    "spdxElementId": sbom["SPDXID"],
+                    "relatedSpdxElement": SPDXID,
+                    "relationshipType": "BUILD_TOOL_OF",
+                }
+            )
+        sbom["packages"] = sbom.get("packages", []) + packages
+        sbom["relationships"] = sbom.get("relationships", []) + relationships
 
     with args.sbom.open("w") as f:
         json.dump(sbom, f, indent=4)

@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
+from unittest.mock import patch
 
 import pytest
 
@@ -40,6 +41,22 @@ def test_merge_sboms(data_dir: Path) -> None:
     result = merge_sboms(f"{data_dir}/cachi2.bom.json", f"{data_dir}/syft.bom.json")
 
     with open(f"{data_dir}/merged.bom.json") as file:
+        expected_sbom = json.load(file)
+
+    assert json.loads(result) == expected_sbom
+
+
+@pytest.fixture
+def isodate() -> Generator:
+    with patch("datetime.datetime") as mock_datetime:
+        mock_datetime.now.return_value.isoformat.return_value = "2021-07-01T00:00:00Z"
+        yield mock_datetime
+
+
+def test_merge_sboms_spdx(data_dir: Path, isodate: Generator) -> None:
+    result = merge_sboms(f"{data_dir}/cachi2.bom.spdx.json", f"{data_dir}/syft.bom.spdx.json", format="spdx")
+
+    with open(f"{data_dir}/merged.bom.spdx.json") as file:
         expected_sbom = json.load(file)
 
     assert json.loads(result) == expected_sbom
