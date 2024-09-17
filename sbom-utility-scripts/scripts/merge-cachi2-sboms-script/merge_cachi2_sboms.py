@@ -217,7 +217,7 @@ def _get_syft_component_filter(cachi_sbom_components: list[dict[str, Any]]) -> C
 
 def _get_syft_package_filter(cachi_sbom_packages: list[dict[str, Any]]) -> Callable:
     """
-    Get a function that filters out Syft components for the merged SBOM.
+    Get a function that filters out Syft packages for the merged SBOM.
 
     This function currently considers a Syft component as a duplicate/removable if:
     - it has the same key as a Cachi2 component
@@ -290,16 +290,10 @@ def _merge_tools_metadata(syft_sbom: dict[Any, Any], cachi2_sbom: dict[Any, Any]
 
 
 def _merge_tools_metadata_spdx(syft_sbom: dict[Any, Any], cachi2_sbom: dict[Any, Any]) -> None:
-    """Merge the content of tools in the metadata section of the SBOM.
-
-    With CycloneDX 1.5, a new format for specifying tools was introduced, and the format from 1.4
-    was marked as deprecated.
-
-    This function aims to support both formats in the Syft SBOM. We're assuming the Cachi2 SBOM
-    was generated with the same version as this script, and it will be in the older format.
+    """Merge the creators in the metadata section of the SBOM.
     """
     cachi2_creators = cachi2_sbom["creationInfo"]["creators"]
-
+ 
     for creator in cachi2_creators:
         syft_sbom["creationInfo"]["creators"].append(creator)
 
@@ -312,6 +306,7 @@ def merge_components(syft_sbom: dict, cachi2_sbom: dict) -> dict:
 
 
 def merge_external_refs(refs1, refs2):
+    """Merge SPDX external references while removing duplicates."""
     ref_tuples = []
     unique_refs2 = []
 
@@ -335,6 +330,7 @@ def merge_external_refs(refs1, refs2):
 
 
 def merge_annotations(annotations1, annotations2):
+    """Merge SPDX package annotations."""
     annotation_tuples = []
     for annotation in annotations1:
         annotation_tuples.append(
@@ -367,6 +363,8 @@ def merge_annotations(annotations1, annotations2):
 
 
 def merge_relationships(relationships1, relationships2, packages):
+    """Merge SPDX relationships."""
+    
     def map_relationships(relationships):
         relations_map = {}
         relations_inverse_map = {}
