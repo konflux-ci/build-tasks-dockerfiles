@@ -144,6 +144,7 @@ def main():
     else:
         packages = []
         relationships = []
+        annotation_date = datetime.datetime.now().isoformat()
         for component in base_images_sbom_components:
             SPDXID = (
                 f"SPDXRef-{component['type']}-{component['name']}-"
@@ -153,6 +154,8 @@ def main():
                 {
                     "SPDXID": SPDXID,
                     "name": component["name"],
+                    # See more info about external refs here:
+                    # https://spdx.github.io/spdx-spec/v2.3/package-information/#7211-description
                     "externalRefs": [
                         {
                             "referenceCategory": "PACKAGE-MANAGER",
@@ -160,10 +163,12 @@ def main():
                             "referenceLocator": component["purl"],
                         }
                     ],
+                    # Annotations are used to provide cyclonedx custom properties
+                    # as json string
                     "annotations": [
                         {
                             "annotator": "konflux",
-                            "annotationDate": datetime.datetime.now().isoformat(),
+                            "annotationDate": annotation_date,
                             "annotationType": "OTHER",
                             "comment": json.dumps(
                                 {"name": property["name"], "value": property["value"]},
