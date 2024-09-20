@@ -121,6 +121,19 @@ def parse_args():
     return args
 
 
+def map_relationships(relationships):
+    relations_map = {}
+    relations_inverse_map = {}
+
+    for relation in relationships:
+        relations_map.setdefault(relation["spdxElementId"], []).append(relation["relatedSpdxElement"])
+        relations_inverse_map[relation["relatedSpdxElement"]] = relation["spdxElementId"]
+
+    for parent_element in relations_map.keys():
+        if parent_element not in relations_inverse_map:
+            break
+    return parent_element, relations_map, relations_inverse_map
+
 def main():
 
     args = parse_args()
@@ -142,6 +155,15 @@ def main():
         else:
             sbom.update({"formulation": [{"components": base_images_sbom_components}]})
     else:
+
+        root_element1, map1, inverse_map1 = map_relationships(sbom['relationships'])
+        package_ids = [package["SPDXID"] for package in sbom['packages']]
+        for r, contains in map1.items():
+            if contains and inverse_map1.get(r) == root_element1:
+                middle_element1 = r
+        if not middle_element1:
+            middle_element1 = root_element1
+
         packages = []
         relationships = []
         annotation_date = datetime.datetime.now().isoformat()
@@ -181,8 +203,8 @@ def main():
             )
             relationships.append(
                 {
-                    "spdxElementId": sbom["SPDXID"],
-                    "relatedSpdxElement": SPDXID,
+                    "spdxElementId": SPDXID,
+                    "relatedSpdxElement": middle_element1,
                     "relationshipType": "BUILD_TOOL_OF",
                 }
             )
