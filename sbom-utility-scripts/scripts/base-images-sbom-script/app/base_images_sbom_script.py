@@ -168,6 +168,7 @@ def main():
         relationships = []
         annotation_date = datetime.datetime.now().isoformat()
         for component in base_images_sbom_components:
+            # Calculate unique identifier SPDXID based on the component name and purl
             SPDXID = (
                 f"SPDXRef-{component['type']}-{component['name']}-"
                 + f"{hashlib.sha256(component['purl'].encode()).hexdigest()}"
