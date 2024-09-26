@@ -9,9 +9,6 @@ from uuid import uuid4
 from packageurl import PackageURL
 
 
-SUPPORTED_ARCHITECTURES = ["amd64", "arm64", "s390x", "ppc64le"]
-
-
 @dataclass
 class Image:
     repository: str
@@ -22,9 +19,18 @@ class Image:
     alternate_purl_names: list[str] = field(default_factory=list)
 
     @staticmethod
+    def from_image_reference(
+        image_reference: str, arch: Optional[str] = None, alternate_purl_names: Optional[list[str]] = None
+    ) -> "Image":
+        return Image.from_image_index_url_and_digest(
+            *image_reference.split("@", 1), arch=arch, alternate_purl_names=alternate_purl_names
+        )
+
+    @staticmethod
     def from_image_index_url_and_digest(
         image_url_and_tag: str,
         image_digest: str,
+        arch: Optional[str] = None,
         alternate_purl_names: Optional[list[str]] = None,
     ) -> "Image":
         alternate_purl_names = alternate_purl_names or []
@@ -37,7 +43,7 @@ class Image:
             digest=image_digest,
             tag=tag,
             alternate_purl_names=alternate_purl_names,
-            arch=None,
+            arch=arch,
         )
 
     @property
@@ -57,7 +63,7 @@ class Image:
         ans = []
         names = sorted(names)
         for name in names:
-            if index_digest:
+            if index_digest and self.arch:
                 ans.append(
                     PackageURL(
                         type="oci",
@@ -113,11 +119,15 @@ def get_relationship(spdxid: str, related_spdxid: str):
 def create_sbom(
     image_index_url: str,
     image_index_digest: str,
-    arch_digests: dict[str, str],
+    child_image_references: list[str],
+    specified_architectures: Optional[list[str]] = None,
     alternative_names: Optional[list[str]] = None,
 ) -> dict:
+    specified_architectures = specified_architectures or []
     alternative_names = alternative_names or []
-    image_index_obj = Image.from_image_index_url_and_digest(image_index_url, image_index_digest, alternative_names)
+    image_index_obj = Image.from_image_index_url_and_digest(
+        image_index_url, image_index_digest, alternate_purl_names=alternative_names
+    )
     sbom_name = f"{image_index_obj.name}-{image_index_obj.tag}"
 
     packages = [create_package(image_index_obj, "SPDXRef-image-index")]
@@ -129,15 +139,10 @@ def create_sbom(
         }
     ]
 
-    for arch, digest in arch_digests.items():
-        arch_image = Image(
-            image_index_obj.repository,
-            image_index_obj.name,
-            digest,
-            image_index_obj.tag,
-            arch,
-            alternative_names,
-        )
+    arch_iterator = iter(specified_architectures)
+    for image_reference in child_image_references:
+        arch = next(arch_iterator, None)
+        arch_image = Image.from_image_reference(image_reference, arch, alternative_names)
         packages.append(create_package(arch_image, image_index_digest=image_index_obj.digest))
         relationships.append(get_relationship(arch_image.propose_spdx_id(), "SPDXRef-image-index"))
 
@@ -174,16 +179,24 @@ def main():
         help="Image index digest in the format 'algorithm:digest'.",
         required=True,
     )
-    for arch in SUPPORTED_ARCHITECTURES:
-        parser.add_argument(
-            f"--{arch}-digest",
-            f"-{arch}",
-            type=str,
-            help=f"Digest of the {arch} image.",
-        )
+    parser.add_argument(
+        "--child-image",
+        "-c",
+        type=str,
+        help="Child image reference in the format 'repo/image:tag@algorithm:digest'. "
+        "Can be specified multiple times.",
+        action="append",
+    )
+    parser.add_argument(
+        "--arch",
+        "-a",
+        type=str,
+        help="Architecture name, can be specified multiple times.",
+        action="append",
+    )
     parser.add_argument(
         "--alt-name",
-        "-a",
+        "-n",
         type=str,
         help="Alternative name of the image, used in PURLs. "
         "Include only the image name, not the whole URL. "
@@ -197,13 +210,11 @@ def main():
         help="Path to save the output SBOM in JSON format.",
     )
     args = parser.parse_args()
-    arch_digests = {arch: getattr(args, f"{arch}_digest") for arch in SUPPORTED_ARCHITECTURES}
-    arch_digests = {key: value for key, value in arch_digests.items() if value}
 
-    sbom = create_sbom(args.image_index_url, args.image_index_digest, arch_digests, args.alt_name)
+    sbom = create_sbom(args.image_index_url, args.image_index_digest, args.child_image, args.arch, args.alt_name)
     if args.output_path:
         with open(args.output_path, "w") as fp:
-            json.dump(sbom, fp)
+            json.dump(sbom, fp, indent=4)
     else:
         print(json.dumps(sbom, indent=4))
 

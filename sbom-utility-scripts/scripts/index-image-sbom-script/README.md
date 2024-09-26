@@ -12,14 +12,21 @@ This script builds SPDX2.3 SBOM for image index.
 - `--image-index-digest` / `-d`
   - Must be in the format `algorithm:hexvalue`
   - Example value `sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941`
-- `--amd64-digest` / `-amd64`
-  - Must be in the format `algorithm:hexvalue`
-- `--arm64-digest` / `-arm64`
-- `--s390x-digest` / `-s390x`
-- `--ppc64le-digest` / `-ppc64le`
-- `--alt-name` / `-a`
+- `--child-image` / `-c`
+  - Must be in the format `repository/image:tag@algorithm:hexvalue`
+  - Example value `quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941`
+- `--arch`
+  - Name of the architecture
+  - Can be specified multiple times
+  - Optional
+  - The values included are read in the same order as child images,
+    these values will be correlated if arch is specified
+  - Will be used for additional PURLs with index digest and `arch` qualifier
+  - Example usage: `-a amd64 -a arm64`
+- `--alt-name` / `-n`
   - Only alternate image names, not the whole url
   - Can be specified multiple times
+  - Optional
   - Example usage: `-u registry.redhat.io/ubi-micro:9.4-6.1716471860 -a ubi9-micro -a ubi-m`
   - This data is used for additional PURL creation
 - `--output-path` / `-o`
@@ -29,9 +36,12 @@ This script builds SPDX2.3 SBOM for image index.
 ## Behavior
 
 This script creates an SBOM with externalRefs using both
-PURLs from image index digest with `arch` qualifier
-and with child digests. These PURLs are created for the
-image digest name and for all its aliases.
+PURLs from child digest and - if arch is specified - from
+index digest with `arch` qualifier.
+
+To correlate child images and their arch, simply
+specify them in the same order. For example:
+`-a arm64 -c foo/bar:baz@sha256:spam -a amd64 -c foo/bar64:bat@sha256:maps`
 
 ## Example
 
@@ -42,8 +52,13 @@ you can use the following command:
 python3 index_image_sbom_script.py \
  -u registry.redhat.io/ubi-micro:9.4-6.1716471860 \
  -d sha256:1c8483e0fda0e990175eb9855a5f15e0910d2038dd397d9e2b357630f0321e6d \
- -a ubi9-micro -ppc64le sha256:f08722139c4da653b870272a192fac700960a3315baa1f79f83a4712a436d4 \
- -s390x sha256:c9e70f4174747c6b53d253e879177c52731cc4bdc5fe9c6a2555412d849a952 \
- -arm64 sha256:c72c705fe4e9de2e065a817be2fbf1b6406010610532243727fdc3042227c71b \
- -amd64 sha256:13fd2a0116a76eaa274fee20c86eef4dfba9f311784e8fb7d7f5fc38b32f3ef
+ -n ubi9-micro \
+ -a amd64 \
+ -c registry.redhat.io/ubi-micro:9.4-6.1716471860@sha256:13fd2a0116a76eaa274fee20c86eef4dfba9f311784e8fb7d7f5fc38b32f3ef \
+ -a arm64 \
+ -c registry.redhat.io/ubi-micro:9.4-6.1716471860@sha256:c72c705fe4e9de2e065a817be2fbf1b6406010610532243727fdc3042227c71b \
+ -a s390x \
+ -c registry.redhat.io/ubi-micro:9.4-6.1716471860@sha256:c9e70f4174747c6b53d253e879177c52731cc4bdc5fe9c6a2555412d849a952 \
+ -a ppc64le \
+ -c registry.redhat.io/ubi-micro:9.4-6.1716471860@sha256:f08722139c4da653b870272a192fac700960a3315baa1f79f83a4712a436d4
 ```
