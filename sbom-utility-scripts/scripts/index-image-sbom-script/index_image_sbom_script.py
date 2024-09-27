@@ -2,8 +2,9 @@
 import argparse
 import json
 from datetime import datetime, timezone
-from typing import Optional
-from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional, Any
+from dataclasses import dataclass
 from uuid import uuid4
 
 from packageurl import PackageURL
@@ -16,24 +17,13 @@ class Image:
     digest: str
     tag: str
     arch: Optional[str]
-    alternate_purl_names: list[str] = field(default_factory=list)
-
-    @staticmethod
-    def from_image_reference(
-        image_reference: str, arch: Optional[str] = None, alternate_purl_names: Optional[list[str]] = None
-    ) -> "Image":
-        return Image.from_image_index_url_and_digest(
-            *image_reference.split("@", 1), arch=arch, alternate_purl_names=alternate_purl_names
-        )
 
     @staticmethod
     def from_image_index_url_and_digest(
         image_url_and_tag: str,
         image_digest: str,
         arch: Optional[str] = None,
-        alternate_purl_names: Optional[list[str]] = None,
     ) -> "Image":
-        alternate_purl_names = alternate_purl_names or []
 
         repository, tag = image_url_and_tag.rsplit(":", 1)
         _, name = repository.rsplit("/", 1)
@@ -42,7 +32,6 @@ class Image:
             name=name,
             digest=image_digest,
             tag=tag,
-            alternate_purl_names=alternate_purl_names,
             arch=arch,
         )
 
@@ -57,26 +46,21 @@ class Image:
         return val
 
     def purls(self, index_digest: Optional[str] = None) -> list[str]:
-        names = {self.name}
-        if self.alternate_purl_names:
-            names.update(self.alternate_purl_names)
         ans = []
-        names = sorted(names)
-        for name in names:
-            if index_digest and self.arch:
-                ans.append(
-                    PackageURL(
-                        type="oci",
-                        name=name,
-                        version=index_digest,
-                        qualifiers={"arch": self.arch, "repository_url": self.repository},
-                    ).to_string()
-                )
+        if index_digest and self.arch:
             ans.append(
                 PackageURL(
-                    type="oci", name=name, version=self.digest, qualifiers={"repository_url": self.repository}
+                    type="oci",
+                    name=self.name,
+                    version=index_digest,
+                    qualifiers={"arch": self.arch, "repository_url": self.repository},
                 ).to_string()
             )
+        ans.append(
+            PackageURL(
+                type="oci", name=self.name, version=self.digest, qualifiers={"repository_url": self.repository}
+            ).to_string()
+        )
         return ans
 
     def propose_spdx_id(self) -> str:
@@ -119,15 +103,12 @@ def get_relationship(spdxid: str, related_spdxid: str):
 def create_sbom(
     image_index_url: str,
     image_index_digest: str,
-    child_image_references: list[str],
-    specified_architectures: Optional[list[str]] = None,
-    alternative_names: Optional[list[str]] = None,
+    inspect_input: dict[str, Any],
 ) -> dict:
-    specified_architectures = specified_architectures or []
-    alternative_names = alternative_names or []
-    image_index_obj = Image.from_image_index_url_and_digest(
-        image_index_url, image_index_digest, alternate_purl_names=alternative_names
-    )
+    if inspect_input["mediaType"] != "application/vnd.oci.image.index.v1+json":
+        raise ValueError("Invalid input file detected, requires `buildah manifest inspect` json.")
+
+    image_index_obj = Image.from_image_index_url_and_digest(image_index_url, image_index_digest)
     sbom_name = f"{image_index_obj.name}-{image_index_obj.tag}"
 
     packages = [create_package(image_index_obj, "SPDXRef-image-index")]
@@ -139,10 +120,17 @@ def create_sbom(
         }
     ]
 
-    arch_iterator = iter(specified_architectures)
-    for image_reference in child_image_references:
-        arch = next(arch_iterator, None)
-        arch_image = Image.from_image_reference(image_reference, arch, alternative_names)
+    for manifest in inspect_input["manifests"]:
+        if manifest["mediaType"] != "application/vnd.oci.image.manifest.v1+json":
+            continue
+
+        arch_image = Image(
+            arch=manifest.get("platform", {}).get("architecture"),
+            name=image_index_obj.name,
+            digest=manifest.get("digest"),
+            tag=image_index_obj.tag,
+            repository=image_index_obj.repository,
+        )
         packages.append(create_package(arch_image, image_index_digest=image_index_obj.digest))
         relationships.append(get_relationship(arch_image.propose_spdx_id(), "SPDXRef-image-index"))
 
@@ -180,28 +168,11 @@ def main():
         required=True,
     )
     parser.add_argument(
-        "--child-image",
-        "-c",
-        type=str,
-        help="Child image reference in the format 'repo/image:tag@algorithm:digest'. "
-        "Can be specified multiple times.",
-        action="append",
-    )
-    parser.add_argument(
-        "--arch",
-        "-a",
-        type=str,
-        help="Architecture name, can be specified multiple times.",
-        action="append",
-    )
-    parser.add_argument(
-        "--alt-name",
-        "-n",
-        type=str,
-        help="Alternative name of the image, used in PURLs. "
-        "Include only the image name, not the whole URL. "
-        "Can be specified multiple times",
-        action="append",
+        "--inspect-input-file",
+        "-i",
+        type=Path,
+        help="Inspect json file produced by image index inspection.",
+        required=True,
     )
     parser.add_argument(
         "--output-path",
@@ -210,8 +181,10 @@ def main():
         help="Path to save the output SBOM in JSON format.",
     )
     args = parser.parse_args()
+    with open(args.inspect_input_file, "r") as inp_file:
+        inspect_input = json.load(inp_file)
 
-    sbom = create_sbom(args.image_index_url, args.image_index_digest, args.child_image, args.arch, args.alt_name)
+    sbom = create_sbom(args.image_index_url, args.image_index_digest, inspect_input)
     if args.output_path:
         with open(args.output_path, "w") as fp:
             json.dump(sbom, fp, indent=4)
