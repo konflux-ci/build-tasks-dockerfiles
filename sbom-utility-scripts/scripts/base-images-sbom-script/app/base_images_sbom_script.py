@@ -122,6 +122,13 @@ def parse_args():
 
 
 def map_relationships(relationships):
+    """ Map relationships of spdx element.
+Method returns triplet containing root element, map of relations and inverse map of relations.
+Root element is considered as element which is not listed as related document in any of the relationships.
+Relationship map is dict of {key: value} where key is spdx element and list of related elements is the value.
+Inverse map is dict of {key: value} where key is related spdx element in the relation ship and value is spdx element.
+"""
+
     relations_map = {}
     relations_inverse_map = {}
 
@@ -155,9 +162,12 @@ def main():
         else:
             sbom.update({"formulation": [{"components": base_images_sbom_components}]})
     else:
-
         root_element1, map1, inverse_map1 = map_relationships(sbom['relationships'])
         package_ids = [package["SPDXID"] for package in sbom['packages']]
+
+        # Try to calculate middle element based on the relationships maps.
+        # SPDX has usually root element which contains a wrapper element which then contains
+        # all of the other elements
         for r, contains in map1.items():
             if contains and inverse_map1.get(r) == root_element1:
                 middle_element1 = r
@@ -202,6 +212,8 @@ def main():
                     ],
                 }
             )
+            # Add relationship for parsed base image components and "middle" element which wraps
+            # all spdx packages, but it's not spdx document itself.
             relationships.append(
                 {
                     "spdxElementId": SPDXID,
