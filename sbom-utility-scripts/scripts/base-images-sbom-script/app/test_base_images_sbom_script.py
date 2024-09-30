@@ -534,7 +534,8 @@ def test_main_input_sbom_spdx_minimal(tmp_path, mocker, isodate):
     "SPDXID": "SPDXRef-Document",
     "project_name": "MyProject",
     "version": "1.0",
-    "packages": []
+    "packages": [],
+    "relationships": []
     }"""
     )
 
@@ -559,6 +560,10 @@ def test_main_input_sbom_spdx_minimal(tmp_path, mocker, isodate):
 
     expected_output = {
         "packages": [
+            {
+                "SPDXID": "SPDXRef-DocumentRoot-Unknown-",
+                "name": "",
+            },
             {
                 "SPDXID": "SPDXRef-container-quay.io/mkosiarc_rhtap/single-container-app-"
                 "9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
@@ -606,16 +611,21 @@ def test_main_input_sbom_spdx_minimal(tmp_path, mocker, isodate):
         ],
         "relationships": [
             {
-                "relatedSpdxElement": "SPDXRef-container-quay.io/mkosiarc_rhtap/"
-                "single-container-app-9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
-                "relationshipType": "BUILD_TOOL_OF",
+                "relatedSpdxElement": "SPDXRef-DocumentRoot-Unknown-",
+                "relationshipType": "DESCRIBES",
                 "spdxElementId": "SPDXRef-Document",
             },
             {
-                "relatedSpdxElement": "SPDXRef-container-registry.access.redhat.com/"
+                "relatedSpdxElement": "SPDXRef-DocumentRoot-Unknown-",
+                "relationshipType": "BUILD_TOOL_OF",
+                "spdxElementId": "SPDXRef-container-quay.io/mkosiarc_rhtap/"
+                "single-container-app-9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
+            },
+            {
+                "spdxElementId": "SPDXRef-container-registry.access.redhat.com/"
                 "ubi8/ubi-0f22256f634f8205fbd9c438c387ccf2d4859250e04104571c93fdb89a62bae1",
                 "relationshipType": "BUILD_TOOL_OF",
-                "spdxElementId": "SPDXRef-Document",
+                "relatedSpdxElement": "SPDXRef-DocumentRoot-Unknown-",
             },
         ],
     }

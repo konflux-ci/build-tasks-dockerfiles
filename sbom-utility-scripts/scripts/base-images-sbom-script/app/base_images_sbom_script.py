@@ -122,6 +122,15 @@ def parse_args():
 
 
 def map_relationships(relationships):
+    """Map relationships of spdx element.
+    Method returns triplet containing root element, map of relations and inverse map of relations.
+    Root element is considered as element which is not listed as related document
+    in any of the relationships. Relationship map is dict of {key: value} where key is spdx
+    element and list of related elements is the value.
+    Inverse map is dict of {key: value} where key is related spdx element in the relation ship
+    and value is spdx element.
+    """
+
     relations_map = {}
     relations_inverse_map = {}
 
@@ -129,10 +138,12 @@ def map_relationships(relationships):
         relations_map.setdefault(relation["spdxElementId"], []).append(relation["relatedSpdxElement"])
         relations_inverse_map[relation["relatedSpdxElement"]] = relation["spdxElementId"]
 
+    parent_element = None
     for parent_element in relations_map.keys():
         if parent_element not in relations_inverse_map:
             break
     return parent_element, relations_map, relations_inverse_map
+
 
 def main():
 
@@ -155,17 +166,37 @@ def main():
         else:
             sbom.update({"formulation": [{"components": base_images_sbom_components}]})
     else:
-
-        root_element1, map1, inverse_map1 = map_relationships(sbom['relationships'])
-        package_ids = [package["SPDXID"] for package in sbom['packages']]
-        for r, contains in map1.items():
-            if contains and inverse_map1.get(r) == root_element1:
-                middle_element1 = r
-        if not middle_element1:
-            middle_element1 = root_element1
+        root_element1, map1, inverse_map1 = map_relationships(sbom["relationships"])
 
         packages = []
         relationships = []
+
+        # Try to calculate middle element based on the relationships maps.
+        # SPDX has usually root element which contains a wrapper element which then contains
+        # all of the other elements
+        middle_element1 = None
+        for r, contains in map1.items():
+            if contains and inverse_map1.get(r) == root_element1:
+                middle_element1 = r
+        # if not middle_element1:
+        #    middle_element1 = root_element1
+        if not middle_element1:
+            middle_element1 = "SPDXRef-DocumentRoot-Unknown-"
+            packages.append(
+                {
+                    "SPDXID": "SPDXRef-DocumentRoot-Unknown-",
+                    "name": "",
+                }
+            )
+            relationships.append(
+                {
+                    "spdxElementId": root_element1 or sbom["SPDXID"],
+                    "relatedSpdxElement": "SPDXRef-DocumentRoot-Unknown-",
+                    "relationshipType": "DESCRIBES",
+                }
+            )
+
+        print("PACKAGES", packages)
         annotation_date = datetime.datetime.now().isoformat()
         for component in base_images_sbom_components:
             # Calculate unique identifier SPDXID based on the component name and purl
@@ -202,6 +233,8 @@ def main():
                     ],
                 }
             )
+            # Add relationship for parsed base image components and "middle" element which wraps
+            # all spdx packages, but it's not spdx document itself.
             relationships.append(
                 {
                     "spdxElementId": SPDXID,

@@ -3,6 +3,7 @@ FROM registry.access.redhat.com/ubi9/python-39:1-197.1725907694@sha256:278ae38e8
 WORKDIR /scripts
 
 COPY scripts/merge_syft_sboms.py /scripts
+COPY scripts/merge_syft_sboms_spdx.py /scripts
 COPY scripts/merge-cachi2-sboms-script/merge_cachi2_sboms.py /scripts
 COPY scripts/base-images-sbom-script/app/base_images_sbom_script.py /scripts
 COPY scripts/base-images-sbom-script/app/requirements.txt /scripts/base-images-sbom-script-requirements.txt
