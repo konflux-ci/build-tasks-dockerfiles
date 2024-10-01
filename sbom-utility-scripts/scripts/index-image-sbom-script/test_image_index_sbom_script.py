@@ -106,7 +106,7 @@ from index_image_sbom_script import create_sbom, main
                         ],
                     },
                     {
-                        "SPDXID": "SPDXRef-f08722139c4da653b870272a192fac700960a3315baa1f79f83a4712a436d4",
+                        "SPDXID": "SPDXRef-Image-ubi9-micro-container-8358c7002e15f219c861227e97919d537e888874e7ca2b349979bc745f903195",
                         "name": "ubi9-micro-container_ppc64le",
                         "versionInfo": "9.4-6.1716471860",
                         "supplier": "Organization: Red Hat",
@@ -139,7 +139,7 @@ from index_image_sbom_script import create_sbom, main
                         "relatedSpdxElement": "SPDXRef-image-index",
                     },
                     {
-                        "spdxElementId": "SPDXRef-f08722139c4da653b870272a192fac700960a3315baa1f79f83a4712a436d4",
+                        "spdxElementId": "SPDXRef-Image-ubi9-micro-container-8358c7002e15f219c861227e97919d537e888874e7ca2b349979bc745f903195",
                         "relationshipType": "VARIANT_OF",
                         "relatedSpdxElement": "SPDXRef-image-index",
                     },
@@ -235,7 +235,7 @@ def test_main(
                     "checksums": [{"algorithm": "SHA256", "checksumValue": "456"}],
                 },
                 {
-                    "SPDXID": "SPDXRef-123",
+                    "SPDXID": "SPDXRef-Image-bar-f10b3378df375bc400853a24e863f9a3194a120c4789a02ba5cc53f236712eca",
                     "name": "bar_arm64",
                     "versionInfo": "v1",
                     "supplier": "Organization: Red Hat",
@@ -263,7 +263,7 @@ def test_main(
                     "relatedSpdxElement": "SPDXRef-image-index",
                 },
                 {
-                    "spdxElementId": "SPDXRef-123",
+                    "spdxElementId": "SPDXRef-Image-bar-f10b3378df375bc400853a24e863f9a3194a120c4789a02ba5cc53f236712eca",
                     "relationshipType": "VARIANT_OF",
                     "relatedSpdxElement": "SPDXRef-image-index",
                 },

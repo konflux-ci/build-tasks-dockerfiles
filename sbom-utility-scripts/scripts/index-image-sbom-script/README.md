@@ -38,4 +38,4 @@ python3 index_image_sbom_script.py \
  ```
 
 To generate a different output, create a json document using `buildah manifest inspect <manifest_pullspec>`
-and supply this file as the `-i` argumzent.
+and supply this file as the `-i` argument.

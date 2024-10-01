@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -64,7 +65,8 @@ class Image:
         return ans
 
     def propose_spdx_id(self) -> str:
-        return f"SPDXRef-{self.digest_hex_val}"
+        purl_hex_digest = hashlib.sha256(self.purls()[0].encode()).hexdigest()
+        return f"SPDXRef-Image-{self.name}-{purl_hex_digest}"
 
 
 def create_package(image: Image, spdxid: Optional[str] = None, image_index_digest: Optional[str] = None) -> dict:
