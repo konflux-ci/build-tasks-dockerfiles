@@ -5,5 +5,20 @@ allowed_users:
   - mmorhun
   - rcerven
   - tkdchen
-  - stuartwdouglas
-
+  - tnevrlka
+approvers:
+  - tisutisu
+  - chmeliik
+  - mkosiarc
+  - mmorhun
+  - rcerven
+  - tkdchen
+  - tnevrlka
+reviewers:
+  - tisutisu
+  - chmeliik
+  - mkosiarc
+  - mmorhun
+  - rcerven
+  - tkdchen
+  - tnevrlka
