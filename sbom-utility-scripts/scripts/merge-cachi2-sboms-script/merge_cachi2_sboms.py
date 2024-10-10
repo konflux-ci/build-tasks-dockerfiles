@@ -290,10 +290,9 @@ def _merge_tools_metadata(syft_sbom: dict[Any, Any], cachi2_sbom: dict[Any, Any]
 
 
 def _merge_tools_metadata_spdx(syft_sbom: dict[Any, Any], cachi2_sbom: dict[Any, Any]) -> None:
-    """Merge the creators in the metadata section of the SBOM.
-    """
+    """Merge the creators in the metadata section of the SBOM."""
     cachi2_creators = cachi2_sbom["creationInfo"]["creators"]
- 
+
     for creator in cachi2_creators:
         syft_sbom["creationInfo"]["creators"].append(creator)
 
@@ -364,7 +363,7 @@ def merge_annotations(annotations1, annotations2):
 
 def merge_relationships(relationships1, relationships2, packages):
     """Merge SPDX relationships."""
-    
+
     def map_relationships(relationships):
         relations_map = {}
         relations_inverse_map = {}
@@ -465,7 +464,9 @@ def merge_sboms(cachi2_sbom_path: str, syft_sbom_path: str, format: str = "cyclo
         syft_sbom["packages"] = merge_packages(syft_sbom, cachi2_sbom)
 
         syft_sbom["relationships"] = merge_relationships(
-            syft_sbom.get("relationships", []), cachi2_sbom.get("relationships", []), syft_sbom["packages"]
+            syft_sbom.get("relationships", []),
+            cachi2_sbom.get("relationships", []),
+            syft_sbom["packages"],
         )
         packages_in_relationships = []
         for relation in syft_sbom["relationships"]:
