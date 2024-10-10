@@ -7,5 +7,7 @@ COPY scripts/merge-cachi2-sboms-script/merge_cachi2_sboms.py /scripts
 COPY scripts/create_purl_sbom.py /scripts
 COPY scripts/base-images-sbom-script/app/base_images_sbom_script.py /scripts
 COPY scripts/base-images-sbom-script/app/requirements.txt /scripts
+COPY scripts/index-image-sbom-script/index_image_sbom_script.py /scripts
 
+# Same requirements for base-images-sbom-script and index-image-sbom-script
 RUN pip3 install -r requirements.txt
