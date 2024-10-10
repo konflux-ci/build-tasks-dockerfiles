@@ -43,6 +43,12 @@ jobs:
         cd ./sbom-utility-scripts/scripts/merge-cachi2-sboms-script/
         tox
 
+    - name: Run tox checks for index-image-sbom-script
+      run: |
+        python3 -m pip install tox
+        cd ./sbom-utility-scripts/scripts/index-image-sbom-script/
+        tox
+
     - name: Build Image
       id: build-image
       uses: redhat-actions/buildah-build@v2
