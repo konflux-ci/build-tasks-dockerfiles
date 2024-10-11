@@ -178,8 +178,6 @@ def main():
         for r, contains in map1.items():
             if contains and inverse_map1.get(r) == root_element1:
                 middle_element1 = r
-        # if not middle_element1:
-        #    middle_element1 = root_element1
         if not middle_element1:
             middle_element1 = "SPDXRef-DocumentRoot-Unknown-"
             packages.append(
@@ -196,7 +194,6 @@ def main():
                 }
             )
 
-        print("PACKAGES", packages)
         annotation_date = datetime.datetime.now().isoformat()
         for component in base_images_sbom_components:
             # Calculate unique identifier SPDXID based on the component name and purl
