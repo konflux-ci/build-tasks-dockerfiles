@@ -1,5 +1,7 @@
-import json
 import argparse
+import hashlib
+import json
+import datetime
 import pathlib
 
 from collections import namedtuple
@@ -93,6 +95,13 @@ def parse_args():
     )
     parser.add_argument("--sbom", type=pathlib.Path, help="Path to the sbom file", required=True)
     parser.add_argument(
+        "--sbom-type",
+        choices=["spdx", "cyclonedx"],
+        default="cyclonedx",
+        help="Type of the sbom file",
+        required=True,
+    )
+    parser.add_argument(
         "--base-images-from-dockerfile",
         type=pathlib.Path,
         help="Path to the file containing base images extracted from Dockerfile via grep, sed and awk in the buildah "
@@ -112,6 +121,30 @@ def parse_args():
     return args
 
 
+def map_relationships(relationships):
+    """Map relationships of spdx element.
+    Method returns triplet containing root element, map of relations and inverse map of relations.
+    Root element is considered as element which is not listed as related document
+    in any of the relationships. Relationship map is dict of {key: value} where key is spdx
+    element and list of related elements is the value.
+    Inverse map is dict of {key: value} where key is related spdx element in the relation ship
+    and value is spdx element.
+    """
+
+    relations_map = {}
+    relations_inverse_map = {}
+
+    for relation in relationships:
+        relations_map.setdefault(relation["spdxElementId"], []).append(relation["relatedSpdxElement"])
+        relations_inverse_map[relation["relatedSpdxElement"]] = relation["spdxElementId"]
+
+    parent_element = None
+    for parent_element in relations_map.keys():
+        if parent_element not in relations_inverse_map:
+            break
+    return parent_element, relations_map, relations_inverse_map
+
+
 def main():
 
     args = parse_args()
@@ -127,10 +160,87 @@ def main():
         sbom = json.load(f)
 
     base_images_sbom_components = get_base_images_sbom_components(base_images_digests, is_last_from_scratch)
-    if "formulation" in sbom:
-        sbom["formulation"].append({"components": base_images_sbom_components})
+    if args.sbom_type == "cyclonedx":
+        if "formulation" in sbom:
+            sbom["formulation"].append({"components": base_images_sbom_components})
+        else:
+            sbom.update({"formulation": [{"components": base_images_sbom_components}]})
     else:
-        sbom.update({"formulation": [{"components": base_images_sbom_components}]})
+        root_element1, map1, inverse_map1 = map_relationships(sbom["relationships"])
+
+        packages = []
+        relationships = []
+
+        # Try to calculate middle element based on the relationships maps.
+        # SPDX has usually root element which contains a wrapper element which then contains
+        # all of the other elements
+        middle_element1 = None
+        for r, contains in map1.items():
+            if contains and inverse_map1.get(r) == root_element1:
+                middle_element1 = r
+        if not middle_element1:
+            middle_element1 = "SPDXRef-DocumentRoot-Unknown-"
+            packages.append(
+                {
+                    "SPDXID": "SPDXRef-DocumentRoot-Unknown-",
+                    "name": "",
+                }
+            )
+            relationships.append(
+                {
+                    "spdxElementId": root_element1 or sbom["SPDXID"],
+                    "relatedSpdxElement": "SPDXRef-DocumentRoot-Unknown-",
+                    "relationshipType": "DESCRIBES",
+                }
+            )
+
+        annotation_date = datetime.datetime.now().isoformat()
+        for component in base_images_sbom_components:
+            # Calculate unique identifier SPDXID based on the component name and purl
+            SPDXID = (
+                f"SPDXRef-{component['type']}-{component['name']}-"
+                + f"{hashlib.sha256(component['purl'].encode()).hexdigest()}"
+            )
+            packages.append(
+                {
+                    "SPDXID": SPDXID,
+                    "name": component["name"],
+                    # See more info about external refs here:
+                    # https://spdx.github.io/spdx-spec/v2.3/package-information/#7211-description
+                    "externalRefs": [
+                        {
+                            "referenceCategory": "PACKAGE-MANAGER",
+                            "referenceType": "purl",
+                            "referenceLocator": component["purl"],
+                        }
+                    ],
+                    # Annotations are used to provide cyclonedx custom properties
+                    # as json string
+                    "annotations": [
+                        {
+                            "annotator": "konflux",
+                            "annotationDate": annotation_date,
+                            "annotationType": "OTHER",
+                            "comment": json.dumps(
+                                {"name": property["name"], "value": property["value"]},
+                                separators=(",", ":"),
+                            ),
+                        }
+                        for property in component["properties"]
+                    ],
+                }
+            )
+            # Add relationship for parsed base image components and "middle" element which wraps
+            # all spdx packages, but it's not spdx document itself.
+            relationships.append(
+                {
+                    "spdxElementId": SPDXID,
+                    "relatedSpdxElement": middle_element1,
+                    "relationshipType": "BUILD_TOOL_OF",
+                }
+            )
+        sbom["packages"] = sbom.get("packages", []) + packages
+        sbom["relationships"] = sbom.get("relationships", []) + relationships
 
     with args.sbom.open("w") as f:
         json.dump(sbom, f, indent=4)
