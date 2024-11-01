@@ -22,6 +22,7 @@ from tarfile import TarInfo
 from typing import Any, TypedDict, NotRequired, Literal, Final
 from urllib.parse import urlparse
 
+# test whether unrelated change also makes the e2e test fail
 
 """
 Requires: git, skopeo, tar, BuildSourceImage
