@@ -171,13 +171,18 @@ def main():
         packages = []
         relationships = []
 
-        # Try to calculate middle element based on the relationships maps.
-        # SPDX has usually root element which contains a wrapper element which then contains
-        # all of the other elements
+        # Try to calculate middle element represeting the container image or directory, which was
+        # used to build the SBOM, based on the relationships maps.
+        # SPDX has relationsship ROOT-ID DESCRIBES MIDDLE-ID which express the fact the SBOM documents
+        # describes container image or directory represented by MIDDLE-ID package.
         middle_element1 = None
         for r, contains in map1.items():
+            # middle element is the one which contains another elements and is in relationship with
+            # the root element where it stand as relatedSpdxElement
             if contains and inverse_map1.get(r) == root_element1:
                 middle_element1 = r
+        # If not middle element is found then create one with ID "Uknown" as source for the SBOM
+        # is not known.
         if not middle_element1:
             middle_element1 = "SPDXRef-DocumentRoot-Unknown-"
             packages.append(
@@ -218,7 +223,7 @@ def main():
                     # as json string
                     "annotations": [
                         {
-                            "annotator": "konflux",
+                            "annotator": "konflux:jsonencoded",
                             "annotationDate": annotation_date,
                             "annotationType": "OTHER",
                             "comment": json.dumps(
@@ -239,7 +244,9 @@ def main():
                     "relationshipType": "BUILD_TOOL_OF",
                 }
             )
+        # merge newly created packages for build tools with existing packages
         sbom["packages"] = sbom.get("packages", []) + packages
+        # merge newly created relationships of the build tools with existing relationships
         sbom["relationships"] = sbom.get("relationships", []) + relationships
 
     with args.sbom.open("w") as f:

@@ -3,17 +3,7 @@ import json
 from argparse import ArgumentParser
 from typing import Any, Callable
 from urllib.parse import quote_plus, urlsplit
-
-
-class _ANY:
-    def __eq__(self, other):
-        return True
-
-    def __hash__(self):
-        return hash("Any")
-
-
-ANY = _ANY()
+from packageurl import PackageURL
 
 
 def _is_syft_local_golang_component(component: dict) -> bool:
@@ -109,8 +99,14 @@ def _unique_key_cachi2_spdx(package: dict) -> list[str]:
     keys = []
     for ref in package.get("externalRefs", []):
         if ref["referenceType"] == "purl":
-            url = urlsplit(ref["referenceLocator"])
-            keys.append(url.scheme + ":" + url.path)
+            parsed_purl = PackageURL.from_string(ref["referenceLocator"])
+            name = parsed_purl.type + "/" + (parsed_purl.namespace or "") + "/" + parsed_purl.name
+            version = parsed_purl.version or ""
+            if parsed_purl.type == "pypi":
+                name = name.lower()
+            if parsed_purl.type == "golang":
+                version = quote_plus(version)
+            keys.append(name + "@" + version)
     return keys
 
 
@@ -144,33 +140,38 @@ def _unique_key_syft(component: dict) -> str:
 
 def _unique_keys_syft_spdx(package: dict) -> str:
     """
-    Create a unique key for Syft reported components.
+    Create a unique keys for Syft reported components.
 
-    This is done by taking a lowercase namespace/name, and URL encoding the version.
+    This is done in following way:
+    - If package doesn't have purl, return [<name>@<versionInfo>] as unique keys
+    - If package has purl(s), take each purl and parse it and take type/namespace/name and version of it
+    -- If package is pypy, convert type/namespace/name to loweracse
+    -- If package is golang, encode version
+    - Append this final key to list of unique keys
 
     Syft does not set any qualifier for NPM, Pip or Golang, so there's no need to remove them
     as done in _unique_key_cachi2.
-
-    If a Syft component lacks a purl (e.g. type OS), we'll use its name and version instead.
     """
     for ref in package.get("externalRefs", []):
         if ref["referenceType"] == "purl":
             break
     else:
-        return package.get("name", "") + "@" + package.get("versionInfo", "")
+        return [package.get("name", "") + "@" + package.get("versionInfo", "")]
 
     keys = []
 
     for ref in package.get("externalRefs", []):
         if ref["referenceType"] == "purl":
             purl = ref["referenceLocator"]
-            if "@" in purl:
-                name, version = purl.split("@")
+            parsed_purl = PackageURL.from_string(purl)
+            if parsed_purl.version:
+                version = parsed_purl.version
+                name = (parsed_purl.type + "/" + (parsed_purl.namespace or "") + "/" + parsed_purl.name).lower()
 
-                if name.startswith("pkg:pypi"):
+                if parsed_purl.type == "pypi":
                     name = name.lower()
 
-                if name.startswith("pkg:golang"):
+                if parsed_purl.type == "golang":
                     version = quote_plus(version)
                 keys.append(f"{name}@{version}")
             else:
@@ -309,7 +310,15 @@ def merge_external_refs(refs1, refs2):
     ref_tuples = []
     unique_refs2 = []
 
-    for ref in refs1:
+    for _ref in refs1:
+        ref = _ref.copy()
+        if ref["referenceType"].lower() == "purl":
+            parsed_purl = PackageURL.from_string(ref["referenceLocator"])
+            purl_dict = parsed_purl.to_dict()
+            purl_dict["qualifiers"] = {}
+            parsed_purl = PackageURL(**purl_dict)
+            ref["referenceLocator"] = parsed_purl.to_string()
+
         ref_tuples.append(
             (
                 ref["referenceCategory"].lower(),
@@ -318,7 +327,14 @@ def merge_external_refs(refs1, refs2):
             )
         )
 
-    for ref in refs2:
+    for _ref in refs2:
+        ref = _ref.copy()
+        if ref["referenceType"].lower() == "purl":
+            parsed_purl = PackageURL.from_string(ref["referenceLocator"])
+            purl_dict = parsed_purl.to_dict()
+            purl_dict["qualifiers"] = {}
+            parsed_purl = PackageURL(**purl_dict)
+            ref["referenceLocator"] = parsed_purl.to_string()
         if (
             ref["referenceCategory"].lower(),
             ref["referenceType"].lower(),
@@ -365,6 +381,14 @@ def merge_relationships(relationships1, relationships2, packages):
     """Merge SPDX relationships."""
 
     def map_relationships(relationships):
+        """Map relationships of spdx element.
+        Method returns triplet containing root element, map of relations and inverse map of relations.
+        Root element is considered as element which is not listed as related document
+        in any of the relationships. Relationship map is dict of {key: value} where key is spdx
+        element and list of related elements is the value.
+        Inverse map is dict of {key: value} where key is related spdx element in the relation ship
+        and value is spdx element.
+        """
         relations_map = {}
         relations_inverse_map = {}
 
@@ -377,44 +401,54 @@ def merge_relationships(relationships1, relationships2, packages):
                 break
         return parent_element, relations_map, relations_inverse_map
 
+    def calculate_middle_element(root_element, map, inverse_map):
+        """Calculate middle element of the relationship.
+        Middle element is considered as element which is related to root element and is not root element.
+        """
+        middle_element = None
+        for r, contains in map.items():
+            if contains and inverse_map.get(r) == root_element:
+                middle_element = r
+        return middle_element
+
     relationships = []
 
     root_element1, map1, inverse_map1 = map_relationships(relationships1)
     root_element2, map2, inverse_map2 = map_relationships(relationships2)
     package_ids = [package["SPDXID"] for package in packages]
-    for r, contains in map2.items():
-        if contains and inverse_map2.get(r) == root_element2:
-            middle_element2 = r
-    for r, contains in map1.items():
-        if contains and inverse_map1.get(r) == root_element1:
-            middle_element1 = r
+
+    middle_element1 = calculate_middle_element(root_element1, map1, inverse_map1)
+    middle_element2 = calculate_middle_element(root_element2, map2, inverse_map2)
 
     for relation in relationships2:
-        _relation = {
-            "spdxElementId": relation["spdxElementId"],
-            "relatedSpdxElement": relation["relatedSpdxElement"],
-            "relationshipType": relation["relationshipType"],
-        }
+        _relation = relation.copy()
+
+        # If relations is Root decribes middle element, skip it
+        if (
+            _relation["relatedSpdxElement"] == middle_element2
+            and _relation["spdxElementId"] == root_element2
+            and _relation["relationshipType"] == "DESCRIBES"
+        ):
+            continue
+        # if spdxElementId is root_element2, replace it with root_element1
+        # if not and relatedSpdxElement is root_element2, replace it with root_element1
         if _relation["spdxElementId"] == root_element2:
             _relation["spdxElementId"] = root_element1
         elif relation["relatedSpdxElement"] == root_element2:
             _relation["relatedSpdxElement"] = root_element1
+        if _relation["spdxElementId"] == middle_element2:
+            _relation["spdxElementId"] = middle_element1
+        if _relation["relatedSpdxElement"] == middle_element2:
+            _relation["relatedSpdxElement"] = middle_element1
 
+        # include only relations to packages which exists in merged packages.
         if _relation["relatedSpdxElement"] in package_ids:
             relationships.append(_relation)
         elif _relation["spdxElementId"] in package_ids:
             relationships.append(_relation)
 
     for relation in relationships1:
-        _relation = {
-            "spdxElementId": relation["spdxElementId"],
-            "relatedSpdxElement": relation["relatedSpdxElement"],
-            "relationshipType": relation["relationshipType"],
-        }
-        if _relation["relatedSpdxElement"] == middle_element1:
-            continue
-        if _relation["spdxElementId"] == middle_element1:
-            _relation["spdxElementId"] = middle_element2
+        _relation = relation.copy()
         if relation["relatedSpdxElement"] in package_ids:
             relationships.append(_relation)
     return relationships
@@ -423,17 +457,17 @@ def merge_relationships(relationships1, relationships2, packages):
 def merge_packages(syft_sbom: dict, cachi2_sbom: dict) -> dict:
     """Merge Cachi2 packages into the Syft SBOM while removing duplicates."""
 
+    def get_package_key(pkg):
+        return json.dumps(sorted(set(_unique_keys_syft_spdx(pkg))), separators=(",", ":"))
+
     is_duplicate_package = _get_syft_package_filter(cachi2_sbom["packages"])
-    cachi2_packages_map = {(p["name"], p.get("versionInfo", ANY)): p for p in cachi2_sbom["packages"]}
+    cachi2_packages_map = {get_package_key(p): p for p in cachi2_sbom["packages"]}
 
     filtered_packages = []
     for p in syft_sbom.get("packages", []):
         if is_duplicate_package(p):
-            if (p["name"], p.get("versionInfo", ANY)) in list(cachi2_packages_map.keys()):
-                try:
-                    cpackage = cachi2_packages_map[(p["name"], p.get("versionInfo"))]
-                except KeyError:
-                    cpackage = cachi2_packages_map[(p["name"], ANY)]
+            if get_package_key(p) in cachi2_packages_map:
+                cpackage = cachi2_packages_map[get_package_key(p)]
                 cpackage["externalRefs"] = sorted(
                     merge_external_refs(cpackage.get("externalRefs", []), p.get("externalRefs", [])),
                     key=lambda x: (
@@ -445,7 +479,6 @@ def merge_packages(syft_sbom: dict, cachi2_sbom: dict) -> dict:
                 cpackage["annotations"] = merge_annotations(cpackage.get("annotations", []), p.get("annotations", []))
         else:
             filtered_packages.append(p)
-
     return filtered_packages + cachi2_sbom["packages"]
 
 

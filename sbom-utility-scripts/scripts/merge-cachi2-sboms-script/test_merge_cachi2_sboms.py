@@ -62,6 +62,34 @@ def test_merge_sboms_spdx(data_dir: Path, isodate: Generator) -> None:
     assert json.loads(result) == expected_sbom
 
 
+def test_merge_both_formats_equal(data_dir: Path, isodate: Generator) -> None:
+    """Test that the merge result is the same for both formats."""
+
+    result_cdx = json.loads(merge_sboms(f"{data_dir}/cachi2.bom.json", f"{data_dir}/syft.bom.json"))
+    result_spdx = json.loads(
+        merge_sboms(f"{data_dir}/cachi2.bom.spdx.json", f"{data_dir}/syft.bom.spdx.json", format="spdx")
+    )
+    cdx_components = []
+    for component in result_cdx["components"]:
+        cdx_components.append(
+            {"name": component["name"], "version": component.get("version"), "purl": component.get("purl")}
+        )
+    spdx_packages = []
+    for package in result_spdx["packages"]:
+        purl = ""
+        purl = None
+        for ref in package.get("externalRefs", []):
+            if ref["referenceType"] == "purl":
+                purl = ref["referenceLocator"]
+                spdx_packages.append({"name": package["name"], "version": package.get("versionInfo"), "purl": purl})
+        if not purl and package["name"]:
+            spdx_packages.append({"name": package["name"], "version": package.get("versionInfo"), "purl": None})
+    cdx_components.sort(key=lambda x: (x["name"], x["version"], x["purl"]))
+    spdx_packages.sort(key=lambda x: (x["name"], x["version"], x["purl"]))
+
+    assert cdx_components == spdx_packages
+
+
 @pytest.mark.parametrize(
     "syft_tools_metadata, expected_result",
     [

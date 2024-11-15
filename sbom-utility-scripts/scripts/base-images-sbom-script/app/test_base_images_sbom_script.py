@@ -579,7 +579,7 @@ def test_main_input_sbom_spdx_minimal(tmp_path, mocker, isodate):
                 ],
                 "annotations": [
                     {
-                        "annotator": "konflux",
+                        "annotator": "konflux:jsonencoded",
                         "annotationDate": "2021-07-01T00:00:00Z",
                         "annotationType": "OTHER",
                         "comment": '{"name":"konflux:container:is_builder_image:for_stage","value":"0"}',
@@ -601,7 +601,7 @@ def test_main_input_sbom_spdx_minimal(tmp_path, mocker, isodate):
                 ],
                 "annotations": [
                     {
-                        "annotator": "konflux",
+                        "annotator": "konflux:jsonencoded",
                         "annotationDate": "2021-07-01T00:00:00Z",
                         "annotationType": "OTHER",
                         "comment": '{"name":"konflux:container:is_base_image","value":"true"}',
