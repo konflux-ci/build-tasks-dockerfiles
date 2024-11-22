@@ -6,6 +6,15 @@ from urllib.parse import quote_plus, urlsplit
 from packageurl import PackageURL
 
 
+def detect_sbom_format(sbom):
+    if sbom.get("bomFormat") == "CycloneDX":
+        return "cyclonedx"
+    elif sbom.get("spdxVersion"):
+        return "spdx"
+    else:
+        raise ValueError("Unknown SBOM format")
+
+
 def _is_syft_local_golang_component(component: dict) -> bool:
     """
     Check if a Syft Golang reported component is a local replacement.
@@ -401,15 +410,16 @@ def merge_relationships(relationships1, relationships2, packages):
                 break
         return parent_element, relations_map, relations_inverse_map
 
-    def calculate_middle_element(root_element, map, inverse_map):
-        """Calculate middle element of the relationship.
-        Middle element is considered as element which is related to root element and is not root element.
+    def calculate_root_package(root_element, map, inverse_map):
+        """Calculate root package from relationship map.
+        Root package is considered as package which contains other packages and
+        is described by the document itself.
         """
-        middle_element = None
+        root_package = None
         for r, contains in map.items():
             if contains and inverse_map.get(r) == root_element:
-                middle_element = r
-        return middle_element
+                root_package = r
+        return root_package
 
     relationships = []
 
@@ -417,15 +427,15 @@ def merge_relationships(relationships1, relationships2, packages):
     root_element2, map2, inverse_map2 = map_relationships(relationships2)
     package_ids = [package["SPDXID"] for package in packages]
 
-    middle_element1 = calculate_middle_element(root_element1, map1, inverse_map1)
-    middle_element2 = calculate_middle_element(root_element2, map2, inverse_map2)
+    root_package1 = calculate_root_package(root_element1, map1, inverse_map1)
+    root_package2 = calculate_root_package(root_element2, map2, inverse_map2)
 
     for relation in relationships2:
         _relation = relation.copy()
 
         # If relations is Root decribes middle element, skip it
         if (
-            _relation["relatedSpdxElement"] == middle_element2
+            _relation["relatedSpdxElement"] == root_package2
             and _relation["spdxElementId"] == root_element2
             and _relation["relationshipType"] == "DESCRIBES"
         ):
@@ -436,10 +446,10 @@ def merge_relationships(relationships1, relationships2, packages):
             _relation["spdxElementId"] = root_element1
         elif relation["relatedSpdxElement"] == root_element2:
             _relation["relatedSpdxElement"] = root_element1
-        if _relation["spdxElementId"] == middle_element2:
-            _relation["spdxElementId"] = middle_element1
-        if _relation["relatedSpdxElement"] == middle_element2:
-            _relation["relatedSpdxElement"] = middle_element1
+        if _relation["spdxElementId"] == root_package2:
+            _relation["spdxElementId"] = root_package1
+        if _relation["relatedSpdxElement"] == root_package2:
+            _relation["relatedSpdxElement"] = root_package1
 
         # include only relations to packages which exists in merged packages.
         if _relation["relatedSpdxElement"] in package_ids:
@@ -482,7 +492,7 @@ def merge_packages(syft_sbom: dict, cachi2_sbom: dict) -> dict:
     return filtered_packages + cachi2_sbom["packages"]
 
 
-def merge_sboms(cachi2_sbom_path: str, syft_sbom_path: str, format: str = "cyclonedx") -> str:
+def merge_sboms(cachi2_sbom_path: str, syft_sbom_path: str) -> str:
     """Merge Cachi2 components into the Syft SBOM while removing duplicates."""
     with open(cachi2_sbom_path) as file:
         cachi2_sbom = json.load(file)
@@ -490,7 +500,12 @@ def merge_sboms(cachi2_sbom_path: str, syft_sbom_path: str, format: str = "cyclo
     with open(syft_sbom_path) as file:
         syft_sbom = json.load(file)
 
-    if format == "cyclonedx":
+    format1 = detect_sbom_format(cachi2_sbom)
+    format2 = detect_sbom_format(syft_sbom)
+    if format1 != format2:
+        raise ValueError("SBOMs are in different formats")
+
+    if format1 == "cyclonedx":
         syft_sbom["components"] = merge_components(syft_sbom, cachi2_sbom)
         _merge_tools_metadata(syft_sbom, cachi2_sbom)
     else:
@@ -527,6 +542,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    merged_sbom = merge_sboms(args.cachi2_sbom_path, args.syft_sbom_path, format=args.sbom_format)
+    merged_sbom = merge_sboms(args.cachi2_sbom_path, args.syft_sbom_path)
 
     print(merged_sbom)

@@ -89,6 +89,14 @@ def get_base_images_sbom_components(base_images_digests, is_last_from_scratch):
     return components
 
 
+def detect_sbom_format(sbom):
+    if sbom.get("bomFormat") == "CycloneDX":
+        return "cyclonedx"
+    elif sbom.get("spdxVersion"):
+        return "spdx"
+    else:
+        raise ValueError("Unknown SBOM format")
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Updates the sbom file with base images data based on the provided files"
@@ -160,7 +168,7 @@ def main():
         sbom = json.load(f)
 
     base_images_sbom_components = get_base_images_sbom_components(base_images_digests, is_last_from_scratch)
-    if args.sbom_type == "cyclonedx":
+    if detect_sbom_format(sbom) == "cyclonedx":
         if "formulation" in sbom:
             sbom["formulation"].append({"components": base_images_sbom_components})
         else:
@@ -171,24 +179,25 @@ def main():
         packages = []
         relationships = []
 
-        # Try to calculate middle element represeting the container image or directory, which was
+        # Try to calculate root package represeting the container image or directory, which was
         # used to build the SBOM, based on the relationships maps.
         # SPDX has relationsship ROOT-ID DESCRIBES MIDDLE-ID which express the fact the SBOM documents
         # describes container image or directory represented by MIDDLE-ID package.
-        middle_element1 = None
+        root_package1 = None
         for r, contains in map1.items():
-            # middle element is the one which contains another elements and is in relationship with
-            # the root element where it stand as relatedSpdxElement
+            # root package is the one which contains another elements and is in relationship with
+            # the document element where it stand as relatedSpdxElement
             if contains and inverse_map1.get(r) == root_element1:
-                middle_element1 = r
-        # If not middle element is found then create one with ID "Uknown" as source for the SBOM
+                root_package1 = r
+        # If not root package is found then create one with ID "Uknown" as source for the SBOM
         # is not known.
-        if not middle_element1:
-            middle_element1 = "SPDXRef-DocumentRoot-Unknown-"
+        if not root_package1:
+            root_package1 = "SPDXRef-DocumentRoot-Unknown-"
             packages.append(
                 {
                     "SPDXID": "SPDXRef-DocumentRoot-Unknown-",
                     "name": "",
+                    "downloadLocation": "NOASSERTION",
                 }
             )
             relationships.append(
@@ -210,6 +219,7 @@ def main():
                 {
                     "SPDXID": SPDXID,
                     "name": component["name"],
+                    "downloadLocation": "NOASSERTION",
                     # See more info about external refs here:
                     # https://spdx.github.io/spdx-spec/v2.3/package-information/#7211-description
                     "externalRefs": [
@@ -223,7 +233,7 @@ def main():
                     # as json string
                     "annotations": [
                         {
-                            "annotator": "konflux:jsonencoded",
+                            "annotator": "Tool:konflux:jsonencoded",
                             "annotationDate": annotation_date,
                             "annotationType": "OTHER",
                             "comment": json.dumps(
@@ -240,7 +250,7 @@ def main():
             relationships.append(
                 {
                     "spdxElementId": SPDXID,
-                    "relatedSpdxElement": middle_element1,
+                    "relatedSpdxElement": root_package1,
                     "relationshipType": "BUILD_TOOL_OF",
                 }
             )

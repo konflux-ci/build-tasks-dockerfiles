@@ -54,7 +54,7 @@ def isodate() -> Generator:
 
 
 def test_merge_sboms_spdx(data_dir: Path, isodate: Generator) -> None:
-    result = merge_sboms(f"{data_dir}/cachi2.bom.spdx.json", f"{data_dir}/syft.bom.spdx.json", format="spdx")
+    result = merge_sboms(f"{data_dir}/cachi2.bom.spdx.json", f"{data_dir}/syft.bom.spdx.json")
 
     with open(f"{data_dir}/merged.bom.spdx.json") as file:
         expected_sbom = json.load(file)
@@ -66,9 +66,7 @@ def test_merge_both_formats_equal(data_dir: Path, isodate: Generator) -> None:
     """Test that the merge result is the same for both formats."""
 
     result_cdx = json.loads(merge_sboms(f"{data_dir}/cachi2.bom.json", f"{data_dir}/syft.bom.json"))
-    result_spdx = json.loads(
-        merge_sboms(f"{data_dir}/cachi2.bom.spdx.json", f"{data_dir}/syft.bom.spdx.json", format="spdx")
-    )
+    result_spdx = json.loads(merge_sboms(f"{data_dir}/cachi2.bom.spdx.json", f"{data_dir}/syft.bom.spdx.json"))
     cdx_components = []
     for component in result_cdx["components"]:
         cdx_components.append(

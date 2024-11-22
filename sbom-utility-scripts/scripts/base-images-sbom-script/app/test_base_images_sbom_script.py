@@ -450,6 +450,7 @@ def test_main_input_sbom_does_not_contain_formulation(tmp_path, mocker):
     # minimal input sbom file
     sbom_file.write_text(
         """{
+    "bomFormat": "CycloneDX",
     "project_name": "MyProject",
     "version": "1.0",
     "components": []
@@ -532,8 +533,9 @@ def test_main_input_sbom_spdx_minimal(tmp_path, mocker, isodate):
     sbom_file.write_text(
         """{
     "SPDXID": "SPDXRef-Document",
-    "project_name": "MyProject",
-    "version": "1.0",
+    "spdxVersion": "SPDX-2.3",
+    "name": "MyProject",
+    "documentNamespace": "http://example.com/uid-1234",
     "packages": [],
     "relationships": []
     }"""
@@ -562,12 +564,14 @@ def test_main_input_sbom_spdx_minimal(tmp_path, mocker, isodate):
         "packages": [
             {
                 "SPDXID": "SPDXRef-DocumentRoot-Unknown-",
+                "downloadLocation": "NOASSERTION",
                 "name": "",
             },
             {
                 "SPDXID": "SPDXRef-container-quay.io/mkosiarc_rhtap/single-container-app-"
                 "9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
                 "name": "quay.io/mkosiarc_rhtap/single-container-app",
+                "downloadLocation": "NOASSERTION",
                 "externalRefs": [
                     {
                         "referenceType": "purl",
@@ -579,7 +583,7 @@ def test_main_input_sbom_spdx_minimal(tmp_path, mocker, isodate):
                 ],
                 "annotations": [
                     {
-                        "annotator": "konflux:jsonencoded",
+                        "annotator": "Tool:konflux:jsonencoded",
                         "annotationDate": "2021-07-01T00:00:00Z",
                         "annotationType": "OTHER",
                         "comment": '{"name":"konflux:container:is_builder_image:for_stage","value":"0"}',
@@ -590,6 +594,7 @@ def test_main_input_sbom_spdx_minimal(tmp_path, mocker, isodate):
                 "name": "registry.access.redhat.com/ubi8/ubi",
                 "SPDXID": "SPDXRef-container-registry.access.redhat.com/ubi8/ubi-"
                 "0f22256f634f8205fbd9c438c387ccf2d4859250e04104571c93fdb89a62bae1",
+                "downloadLocation": "NOASSERTION",
                 "externalRefs": [
                     {
                         "referenceCategory": "PACKAGE-MANAGER",
@@ -601,7 +606,7 @@ def test_main_input_sbom_spdx_minimal(tmp_path, mocker, isodate):
                 ],
                 "annotations": [
                     {
-                        "annotator": "konflux:jsonencoded",
+                        "annotator": "Tool:konflux:jsonencoded",
                         "annotationDate": "2021-07-01T00:00:00Z",
                         "annotationType": "OTHER",
                         "comment": '{"name":"konflux:container:is_base_image","value":"true"}',
@@ -646,6 +651,7 @@ def test_main_input_sbom_does_not_contain_formulation_and_base_image_from_scratc
     sbom_file.write_text(
         """{
     "project_name": "MyProject",
+    "bomFormat": "CycloneDX",
     "version": "1.0",
     "components": []
     }"""
@@ -720,6 +726,7 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
     sbom_file.write_text(
         """
     {
+        "bomFormat": "CycloneDX",
         "project_name": "MyProject",
         "version": "1.0",
         "components": [],
