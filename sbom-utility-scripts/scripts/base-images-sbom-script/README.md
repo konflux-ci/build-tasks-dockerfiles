@@ -5,8 +5,10 @@ This is a script that creates sbom data for base images. It is used in
 
 It takes several inputs:
 1. path to the sbom file, that will be updated in place with the base image data
-2. path to a file containing base images as taken from from the dockerfile (with preserved order)
-3. path to a file containing base images with digests, generated from the output of **buildah images --format '{{ .Name }}:{{ .Tag }}@{{ .Digest }}'**. The dockerfile order must be preserved as well
+2. path to a json file containing parsed Dockerfile via dockerfile-json
+3. path to a file containing base images references as used during in the Dockerfile mapped to the full image references 
+with digests. This mapping is expected to be in the format **<image-reference-used-in-dockerfile>|<full-image-reference-with-digest>**.
+The full image reference with digest is generated from the output of **buildah images --format '{{ .Name }}:{{ .Tag }}@{{ .Digest }}'**.
 
 
 

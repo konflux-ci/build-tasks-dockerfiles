@@ -3,21 +3,29 @@ import json
 
 from unittest.mock import MagicMock
 
-from base_images_sbom_script import get_base_images_sbom_components, main, parse_image_reference_to_parts, ParsedImage
+from base_images_sbom_script import (
+    get_base_images_sbom_components,
+    get_base_images_from_dockerfile,
+    main,
+    parse_image_reference_to_parts,
+    ParsedImage,
+)
 
 
 @pytest.mark.parametrize(
-    "base_images_digests, is_last_from_scratch, expected_result",
+    "base_images, base_images_digests, expected_result",
     [
-        # two builder images, last base image is from scratch
+        # two builder images, last stage is from scratch
         (
             [
-                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256"
-                ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-                "registry.access.redhat.com/ubi8/ubi:latest@sha256"
-                ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                "registry.access.redhat.com/ubi8/ubi:latest",
+                "scratch",
             ],
-            True,
+            {
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+                "registry.access.redhat.com/ubi8/ubi:latest": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",  # noqa
+            },
             [
                 {
                     "type": "container",
@@ -49,12 +57,13 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
         # one builder image, one parent image
         (
             [
-                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256"
-                ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-                "registry.access.redhat.com/ubi8/ubi:latest@sha256"
-                ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                "registry.access.redhat.com/ubi8/ubi:latest",
             ],
-            False,
+            {
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+                "registry.access.redhat.com/ubi8/ubi:latest": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",  # noqa
+            },
             [
                 {
                     "type": "container",
@@ -80,11 +89,10 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
         ),
         # just one parent image
         (
-            [
-                "registry.access.redhat.com/ubi8/ubi:latest@sha256"
-                ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
-            ],
-            False,
+            ["registry.access.redhat.com/ubi8/ubi:latest"],
+            {
+                "registry.access.redhat.com/ubi8/ubi:latest": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",  # noqa
+            },
             [
                 {
                     "type": "container",
@@ -95,13 +103,12 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
                 },
             ],
         ),
-        # one builder, last base image from scratch
+        # one builder, last stage from scratch
         (
-            [
-                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256"
-                ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-            ],
-            True,
+            ["quay.io/mkosiarc_rhtap/single-container-app:f2566ab", "scratch"],
+            {
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+            },
             [
                 {
                     "type": "container",
@@ -118,7 +125,7 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
                 },
             ],
         ),
-        # four builder images, and from scratch base image
+        # four builder images, and from scratch in last stage
         (
             [
                 "quay.io/builder1/builder1:aaaaaaa@sha256"
@@ -129,8 +136,14 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
                 ":3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
                 "quay.io/builder4/builder4:ddddddd@sha256"
                 ":4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",
+                "scratch",
             ],
-            True,
+            {
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",  # noqa
+                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",  # noqa
+            },
             [
                 {
                     "type": "container",
@@ -196,7 +209,13 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
                 "registry.access.redhat.com/ubi8/ubi:latest@sha256"
                 ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             ],
-            False,
+            {
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",  # noqa
+                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",  # noqa
+                "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",  # noqa
+            },
             [
                 {
                     "type": "container",
@@ -255,7 +274,7 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
                 },
             ],
         ),
-        # 3 builders and one final base image. builder 1 is reused twice, resulting in multiple properties
+        # 3 builders and one final base image. builder 1 is reused three times, resulting in multiple properties
         (
             [
                 "quay.io/builder1/builder1:aaaaaaa@sha256"
@@ -271,7 +290,13 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
                 "registry.access.redhat.com/ubi8/ubi:latest@sha256"
                 ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             ],
-            False,
+            {
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",  # noqa
+                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",  # noqa
+                "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",  # noqa
+            },
             [
                 {
                     "type": "container",
@@ -331,7 +356,7 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
                 },
             ],
         ),
-        # 3 builders and final base image is scratch. builder 1 is reused twice, resulting in multiple properties
+        # 3 builders and final base image is scratch. builder 1 is reused three times, resulting in multiple properties
         (
             [
                 "quay.io/builder1/builder1:aaaaaaa@sha256"
@@ -344,8 +369,14 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
                 ":3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
                 "quay.io/builder1/builder1:aaaaaaa@sha256"
                 ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "scratch",
             ],
-            True,
+            {
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",  # noqa
+                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",  # noqa
+            },
             [
                 {
                     "type": "container",
@@ -403,7 +434,10 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
                 "quay.io/builder1/builder1:aaaaaaa@sha256"
                 ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
             ],
-            False,
+            {
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
+            },
             [
                 {
                     "type": "container",
@@ -435,17 +469,109 @@ from base_images_sbom_script import get_base_images_sbom_components, main, parse
                 },
             ],
         ),
+        # Two images, both reused and several oci-archives and from scratch layers
+        (
+            [
+                "quay.io/builder1/builder1:aaaaaaa@sha256"
+                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "scratch",
+                "quay.io/builder2/builder2:bbbbbbb@sha256"
+                ":2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "scratch",
+                "quay.io/builder1/builder1:aaaaaaa@sha256"
+                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "oci-archive:export/out.ociarchive",
+                "quay.io/builder2/builder2:bbbbbbb@sha256"
+                ":2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "oci-archive:export/out.ociarchive",
+                "quay.io/builder1/builder1:aaaaaaa@sha256"
+                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+            ],
+            {
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
+            },
+            [
+                {
+                    "type": "container",
+                    "name": "quay.io/builder1/builder1",
+                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941"
+                    "?repository_url=quay.io/builder1/builder1",
+                    "properties": [
+                        {
+                            "name": "konflux:container:is_builder_image:for_stage",
+                            "value": "0",
+                        },
+                        {
+                            "name": "konflux:container:is_builder_image:for_stage",
+                            "value": "4",
+                        },
+                        {
+                            "name": "konflux:container:is_base_image",
+                            "value": "true",
+                        },
+                    ],
+                },
+                {
+                    "type": "container",
+                    "name": "quay.io/builder2/builder2",
+                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942"
+                    "?repository_url=quay.io/builder2/builder2",
+                    "properties": [
+                        {
+                            "name": "konflux:container:is_builder_image:for_stage",
+                            "value": "2",
+                        },
+                        {
+                            "name": "konflux:container:is_builder_image:for_stage",
+                            "value": "6",
+                        },
+                    ],
+                },
+            ],
+        ),
+        # one builder, last stage from oci-archive
+        (
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                "oci-archive:export/out.ociarchive",
+            ],
+            {
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+            },
+            [
+                {
+                    "type": "container",
+                    "name": "quay.io/mkosiarc_rhtap/single-container-app",
+                    "purl": "pkg:oci/single-container-app@sha256"
+                    ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io"
+                    "/mkosiarc_rhtap/single-container-app",
+                    "properties": [
+                        {
+                            "name": "konflux:container:is_builder_image:for_stage",
+                            "value": "0",
+                        }
+                    ],
+                },
+            ],
+        ),
+        # just from scratch
+        (
+            ["scratch"],
+            {},  # empty base_images_digests
+            [],  # SBOM not created
+        ),
     ],
 )
-def test_get_base_images_sbom_components(base_images_digests, is_last_from_scratch, expected_result):
-    result = get_base_images_sbom_components(base_images_digests, is_last_from_scratch)
+def test_get_base_images_sbom_components(base_images, base_images_digests, expected_result):
+    result = get_base_images_sbom_components(base_images, base_images_digests)
     assert result == expected_result
 
 
 def test_main_input_sbom_does_not_contain_formulation(tmp_path, mocker):
     sbom_file = tmp_path / "sbom.json"
-    base_images_from_dockerfile_file = tmp_path / "base_images_from_dockerfile.txt"
-    base_images_digests_file = tmp_path / "base_images_digests.txt"
+    parsed_dockerfile = tmp_path / "parsed_dockerfile.json"
+    base_images_digests_raw_file = tmp_path / "base_images_digests.txt"
 
     # minimal input sbom file
     sbom_file.write_text(
@@ -457,20 +583,38 @@ def test_main_input_sbom_does_not_contain_formulation(tmp_path, mocker):
     )
 
     # one builder images and one base image
-    base_images_from_dockerfile_file.write_text(
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab\nregistry.access.redhat.com/ubi8/ubi:latest"
+    parsed_dockerfile.write_text(
+        """
+        {
+            "Stages": [
+                {
+                    "From": {
+                        "Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"
+                    }
+                },
+                {
+                    "From": {
+                        "Image": "registry.access.redhat.com/ubi8/ubi:latest"
+                    }
+                }
+            ]
+        }
+        """
     )
-    base_images_digests_file.write_text(
+    base_images_digests_raw_file.write_text(
+        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab "
         "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256"
-        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\nregistry.access.redhat.com/ubi8/ubi"
-        ":latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac "
+        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
+        "registry.access.redhat.com/ubi8/ubi:latest "
+        "registry.access.redhat.com/ubi8/ubi"
+        ":latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
     )
 
     # mock the parsed args, to avoid testing parse_args function
     mock_args = MagicMock()
     mock_args.sbom = sbom_file
-    mock_args.base_images_from_dockerfile = base_images_from_dockerfile_file
-    mock_args.base_images_digests = base_images_digests_file
+    mock_args.parsed_dockerfile = parsed_dockerfile
+    mock_args.base_images_digests = base_images_digests_raw_file
     mocker.patch("base_images_sbom_script.parse_args", return_value=mock_args)
 
     main()
@@ -518,8 +662,8 @@ def test_main_input_sbom_does_not_contain_formulation(tmp_path, mocker):
 
 def test_main_input_sbom_does_not_contain_formulation_and_base_image_from_scratch(tmp_path, mocker):
     sbom_file = tmp_path / "sbom.json"
-    base_images_from_dockerfile_file = tmp_path / "base_images_from_dockerfile.txt"
-    base_images_digests_file = tmp_path / "base_images_digests.txt"
+    parsed_dockerfile = tmp_path / "parsed_dockerfile.json"
+    base_images_digests_raw_file = tmp_path / "base_images_digests.txt"
 
     # minimal input sbom file
     sbom_file.write_text(
@@ -531,20 +675,43 @@ def test_main_input_sbom_does_not_contain_formulation_and_base_image_from_scratc
     )
 
     # two builder images and the last one is from scratch
-    base_images_from_dockerfile_file.write_text(
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab\nregistry.access.redhat.com/ubi8/ubi:latest\nscratch"
+    parsed_dockerfile.write_text(
+        """
+        {
+            "Stages": [
+                {
+                    "From": {
+                        "Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"
+                    }
+                },
+                {
+                    "From": {
+                        "Image": "registry.access.redhat.com/ubi8/ubi:latest"
+                    }
+                },
+                {
+                    "From": {
+                        "Scratch": true
+                    }
+                }
+            ]
+        }
+        """
     )
-    base_images_digests_file.write_text(
+    base_images_digests_raw_file.write_text(
+        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab "
         "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256"
-        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\nregistry.access.redhat.com/ubi8/ubi"
-        ":latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac "
+        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
+        "registry.access.redhat.com/ubi8/ubi:latest "
+        "registry.access.redhat.com/ubi8/ubi"
+        ":latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
     )
 
     # mock the parsed args, to avoid testing parse_args function
     mock_args = MagicMock()
     mock_args.sbom = sbom_file
-    mock_args.base_images_from_dockerfile = base_images_from_dockerfile_file
-    mock_args.base_images_digests = base_images_digests_file
+    mock_args.parsed_dockerfile = parsed_dockerfile
+    mock_args.base_images_digests = base_images_digests_raw_file
     mocker.patch("base_images_sbom_script.parse_args", return_value=mock_args)
 
     main()
@@ -592,8 +759,8 @@ def test_main_input_sbom_does_not_contain_formulation_and_base_image_from_scratc
 
 def test_main_input_sbom_contains_formulation(tmp_path, mocker):
     sbom_file = tmp_path / "sbom.json"
-    base_images_from_dockerfile_file = tmp_path / "base_images_from_dockerfile.txt"
-    base_images_digests_file = tmp_path / "base_images_digests.txt"
+    parsed_dockerfile = tmp_path / "parsed_dockerfile.json"
+    base_images_digests_raw_file = tmp_path / "base_images_digests.txt"
 
     # minimal sbom with existing formulation that contains components item
     sbom_file.write_text(
@@ -619,20 +786,43 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
     )
 
     # two builder images and the last one is from scratch
-    base_images_from_dockerfile_file.write_text(
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab\nregistry.access.redhat.com/ubi8/ubi:latest\nscratch"
+    parsed_dockerfile.write_text(
+        """
+        {
+            "Stages": [
+                {
+                    "From": {
+                        "Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"
+                    }
+                },
+                {
+                    "From": {
+                        "Image": "registry.access.redhat.com/ubi8/ubi:latest"
+                    }
+                },
+                {
+                    "From": {
+                        "Scratch": true
+                    }
+                }
+            ]
+        }
+        """
     )
-    base_images_digests_file.write_text(
+    base_images_digests_raw_file.write_text(
+        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab "
         "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256"
-        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\nregistry.access.redhat.com/ubi8/ubi"
-        ":latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac "
+        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
+        "registry.access.redhat.com/ubi8/ubi:latest "
+        "registry.access.redhat.com/ubi8/ubi"
+        ":latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
     )
 
     # mock the parsed args, to avoid testing parse_args function
     mock_args = MagicMock()
     mock_args.sbom = sbom_file
-    mock_args.base_images_from_dockerfile = base_images_from_dockerfile_file
-    mock_args.base_images_digests = base_images_digests_file
+    mock_args.parsed_dockerfile = parsed_dockerfile
+    mock_args.base_images_digests = base_images_digests_raw_file
     mocker.patch("base_images_sbom_script.parse_args", return_value=mock_args)
 
     main()
@@ -722,3 +912,183 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
 def test_parse_image_reference_to_parts(image, expected_parsed_image):
     parsed_image = parse_image_reference_to_parts(image)
     assert parsed_image == expected_parsed_image
+
+
+@pytest.mark.parametrize(
+    "parsed_dockerfile, expected_base_images",
+    [
+        # basic example
+        # FROM quay.io/mkosiarc_rhtap/single-container-app:f2566ab
+        # ...
+        # FROM registry.access.redhat.com/ubi8/ubi:latest
+        # ...
+        (
+            {
+                "Stages": [
+                    {
+                        "BaseName": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                        "From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"},
+                    },
+                    {
+                        "BaseName": "registry.access.redhat.com/ubi8/ubi:latest",
+                        "From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"},
+                    },
+                ]
+            },
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                "registry.access.redhat.com/ubi8/ubi:latest",
+            ],
+        ),
+        # basic example with scratch stage
+        # FROM quay.io/mkosiarc_rhtap/single-container-app:f2566ab
+        # ...
+        # FROM registry.access.redhat.com/ubi8/ubi:latest
+        # ...
+        # FROM scratch
+        # ...
+        (
+            {
+                "Stages": [
+                    {
+                        "BaseName": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                        "From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"},
+                    },
+                    {
+                        "BaseName": "registry.access.redhat.com/ubi8/ubi:latest",
+                        "From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"},
+                    },
+                    {"BaseName": "scratch", "From": {"Scratch": True}},
+                ]
+            },
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                "registry.access.redhat.com/ubi8/ubi:latest",
+                "scratch",
+            ],
+        ),
+        # just from scratch
+        (
+            {
+                "Stages": [
+                    {"BaseName": "scratch", "From": {"Scratch": True}},
+                ]
+            },
+            [
+                "scratch",
+            ],
+        ),
+        # Multiple images which are reused, including two scratch stages and two oci-archive stages
+        # FROM quay.io/mkosiarc_rhtap/single-container-app:f2566ab
+        # ...
+        # FROM scratch
+        # ...
+        # FROM quay.io/mkosiarc_rhtap/single-container-app:f2566ab
+        # ...
+        # FROM oci-archive:export/out.ociarchive
+        # ...
+        # FROM registry.access.redhat.com/ubi8/ubi:latest
+        # ...
+        # FROM scratch
+        # ...
+        # FROM oci-archive:export/out.ociarchive
+        # ...
+        (
+            {
+                "Stages": [
+                    {
+                        "BaseName": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                        "From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"},
+                    },
+                    {"BaseName": "scratch", "From": {"Scratch": True}},
+                    {
+                        "BaseName": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                        "From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"},
+                    },
+                    {
+                        "BaseName": "oci-archive:export/out.ociarchive",
+                        "From": {"Image": "oci-archive:export/out.ociarchive"},
+                    },
+                    {
+                        "BaseName": "registry.access.redhat.com/ubi8/ubi:latest",
+                        "From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"},
+                    },
+                    {"BaseName": "scratch", "From": {"Scratch": True}},
+                    {
+                        "BaseName": "oci-archive:export/out.ociarchive",
+                        "From": {"Image": "oci-archive:export/out.ociarchive"},
+                    },
+                ]
+            },
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                "scratch",
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab",
+                "oci-archive:export/out.ociarchive",
+                "registry.access.redhat.com/ubi8/ubi:latest",
+                "scratch",
+                "oci-archive:export/out.ociarchive",
+            ],
+        ),
+        # alias/named stage, so something like
+        # FROM registry.access.redhat.com/ubi8/ubi:latest as builder
+        # ...
+        # FROM builder
+        # ...
+        (
+            {
+                "Stages": [
+                    {
+                        "BaseName": "registry.access.redhat.com/ubi8/ubi:latest",
+                        "As": "builder",
+                        "From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"},
+                    },
+                    {
+                        "BaseName": "builder",
+                        "From": {"Stage": {"Named": "builder", "Index": 0}},
+                    },
+                ]
+            },
+            [
+                "registry.access.redhat.com/ubi8/ubi:latest",
+                "registry.access.redhat.com/ubi8/ubi:latest",
+            ],
+        ),
+        # alias to an alias, so something like
+        # FROM registry.access.redhat.com/ubi8/ubi:latest as builder
+        # ...
+        # FROM builder as stage1
+        # ...
+        # FROM stage1 as stage2
+        # ...
+        (
+            {
+                "Stages": [
+                    {
+                        "BaseName": "registry.access.redhat.com/ubi8/ubi:latest",
+                        "As": "builder",
+                        "From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"},
+                    },
+                    {
+                        "BaseName": "builder",
+                        "As": "stage1",
+                        "From": {"Stage": {"Named": "builder", "Index": 0}},
+                    },
+                    {
+                        "BaseName": "stage1",
+                        "As": "stage2",
+                        "From": {"Stage": {"Named": "stage1", "Index": 1}},
+                    },
+                ]
+            },
+            [
+                "registry.access.redhat.com/ubi8/ubi:latest",
+                "registry.access.redhat.com/ubi8/ubi:latest",
+                "registry.access.redhat.com/ubi8/ubi:latest",
+            ],
+        ),
+    ],
+)
+def test_get_base_images_from_dockerfile(parsed_dockerfile, expected_base_images):
+    actual_base_images = get_base_images_from_dockerfile(parsed_dockerfile)
+    assert actual_base_images == expected_base_images
