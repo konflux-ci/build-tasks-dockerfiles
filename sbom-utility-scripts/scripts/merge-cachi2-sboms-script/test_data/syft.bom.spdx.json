@@ -24,6 +24,26 @@
       "primaryPackagePurpose": "FILE"
     },
     {
+        "name": "registry.access.redhat.com/ubi8/ubi",
+        "SPDXID": "SPDXRef-Image-registry.access.redhat.com/ubi8/ubi-0f22256f634f8205fbd9c438c387ccf2d4859250e04104571c93fdb89a62bae1",
+        "downloadLocation": "NOASSERTION",
+        "externalRefs": [
+            {
+                "referenceCategory": "PACKAGE-MANAGER",
+                "referenceType": "purl",
+                "referenceLocator": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi"
+            }
+        ],
+        "annotations": [
+            {
+                "annotator": "Tool: konflux:jsonencoded",
+                "annotationDate": "2021-07-01T00:00:00Z",
+                "annotationType": "OTHER",
+                "comment": "{\"name\":\"konflux:container:is_base_image\",\"value\":\"true\"}"
+            }
+        ]
+    },
+    {
       "name": "./terminaltor",
       "SPDXID": "SPDXRef-Package-go-module-.-terminaltor-1b79094a8c283d88",
       "supplier": "NOASSERTION",
@@ -875,6 +895,11 @@
       "spdxElementId": "SPDXRef-DocumentRoot-File-",
       "relatedSpdxElement": "SPDXRef-Package-rhel",
       "relationshipType": "CONTAINS"
+    },
+    {
+        "spdxElementId": "SPDXRef-Image-registry.access.redhat.com/ubi8/ubi-0f22256f634f8205fbd9c438c387ccf2d4859250e04104571c93fdb89a62bae1",
+        "relationshipType": "BUILD_TOOL_OF",
+        "relatedSpdxElement": "SPDXRef-DocumentRoot-File-"
     },
     {
       "spdxElementId": "SPDXRef-DOCUMENT",

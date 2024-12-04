@@ -24,6 +24,26 @@
       "primaryPackagePurpose": "OTHER"
     },
     {
+        "SPDXID": "SPDXRef-Image-quay.io/mkosiarc_rhtap/single-container-app-9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
+        "name": "quay.io/mkosiarc_rhtap/single-container-app",
+        "downloadLocation": "NOASSERTION",
+        "externalRefs": [
+            {
+                "referenceType": "purl",
+                "referenceLocator": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
+                "referenceCategory": "PACKAGE-MANAGER"
+            }
+        ],
+        "annotations": [
+            {
+                "annotator": "Tool: konflux:jsonencoded",
+                "annotationDate": "2021-07-01T00:00:00Z",
+                "annotationType": "OTHER",
+                "comment": "{\"name\":\"konflux:container:is_builder_image:for_stage\",\"value\":\"0\"}"
+            }
+        ]
+    },
+    {
       "name": "PyYAML",
       "SPDXID": "SPDXRef-Package-python-PyYAML-696696f5e92f1b5e",
       "versionInfo": "6.0",
@@ -321,6 +341,11 @@
     }
   ],
   "relationships": [
+    {
+        "spdxElementId": "SPDXRef-Image-quay.io/mkosiarc_rhtap/single-container-app-9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
+        "relationshipType": "BUILD_TOOL_OF",
+        "relatedSpdxElement": "SPDXRef-DocumentRoot-Unknown-"
+    },
     {
       "spdxElementId": "SPDXRef-DocumentRoot-Unknown-",
       "relatedSpdxElement": "SPDXRef-Package-python-PyYAML-696696f5e92f1b5e",

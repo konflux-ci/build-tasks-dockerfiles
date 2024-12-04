@@ -389,46 +389,22 @@ def merge_annotations(annotations1, annotations2):
 def merge_relationships(relationships1, relationships2, packages):
     """Merge SPDX relationships."""
 
-    def map_relationships(relationships):
-        """Map relationships of spdx element.
-        Method returns triplet containing root element, map of relations and inverse map of relations.
-        Root element is considered as element which is not listed as related document
-        in any of the relationships. Relationship map is dict of {key: value} where key is spdx
-        element and list of related elements is the value.
-        Inverse map is dict of {key: value} where key is related spdx element in the relation ship
-        and value is spdx element.
-        """
-        relations_map = {}
-        relations_inverse_map = {}
-
-        for relation in relationships:
-            relations_map.setdefault(relation["spdxElementId"], []).append(relation["relatedSpdxElement"])
-            relations_inverse_map[relation["relatedSpdxElement"]] = relation["spdxElementId"]
-
-        for parent_element in relations_map.keys():
-            if parent_element not in relations_inverse_map:
+    def spdx_find_doc_and_root_package(relationships):
+        for relationship in relationships:
+            if relationship["relationshipType"] == "DESCRIBES":
+                root_package1 = relationship["relatedSpdxElement"]
+                doc = relationship["spdxElementId"]
                 break
-        return parent_element, relations_map, relations_inverse_map
-
-    def calculate_root_package(root_element, map, inverse_map):
-        """Calculate root package from relationship map.
-        Root package is considered as package which contains other packages and
-        is described by the document itself.
-        """
-        root_package = None
-        for r, contains in map.items():
-            if contains and inverse_map.get(r) == root_element:
-                root_package = r
-        return root_package
+        else:
+            raise ValueError("No DESCRIBES relationship found in the SBOM")
+        return root_package1, doc
 
     relationships = []
 
-    root_element1, map1, inverse_map1 = map_relationships(relationships1)
-    root_element2, map2, inverse_map2 = map_relationships(relationships2)
-    package_ids = [package["SPDXID"] for package in packages]
+    root_package1, doc1 = spdx_find_doc_and_root_package(relationships1)
+    root_package2, doc2 = spdx_find_doc_and_root_package(relationships2)
 
-    root_package1 = calculate_root_package(root_element1, map1, inverse_map1)
-    root_package2 = calculate_root_package(root_element2, map2, inverse_map2)
+    package_ids = [package["SPDXID"] for package in packages]
 
     for relation in relationships2:
         _relation = relation.copy()
@@ -436,29 +412,29 @@ def merge_relationships(relationships1, relationships2, packages):
         # If relations is Root decribes middle element, skip it
         if (
             _relation["relatedSpdxElement"] == root_package2
-            and _relation["spdxElementId"] == root_element2
+            and _relation["spdxElementId"] == doc2
             and _relation["relationshipType"] == "DESCRIBES"
         ):
             continue
-        # if spdxElementId is root_element2, replace it with root_element1
+        # if spdxElementId is doc2, replace it with doc1
         # if not and relatedSpdxElement is root_element2, replace it with root_element1
-        if _relation["spdxElementId"] == root_element2:
-            _relation["spdxElementId"] = root_element1
-        elif relation["relatedSpdxElement"] == root_element2:
-            _relation["relatedSpdxElement"] = root_element1
+        if _relation["spdxElementId"] == doc2:
+            _relation["spdxElementId"] = doc1
+        elif relation["relatedSpdxElement"] == doc2:
+            _relation["relatedSpdxElement"] = doc1
         if _relation["spdxElementId"] == root_package2:
             _relation["spdxElementId"] = root_package1
         if _relation["relatedSpdxElement"] == root_package2:
             _relation["relatedSpdxElement"] = root_package1
 
         # include only relations to packages which exists in merged packages.
-        if _relation["relatedSpdxElement"] in package_ids:
-            relationships.append(_relation)
-        elif _relation["spdxElementId"] in package_ids:
+        if _relation["relatedSpdxElement"] in package_ids or _relation["spdxElementId"] in package_ids:
             relationships.append(_relation)
 
     for relation in relationships1:
         _relation = relation.copy()
+        # Here we process only relatedSpdxElement as spdxElementId could point to the root package
+        # which would lead to including also relationships to removed packages
         if relation["relatedSpdxElement"] in package_ids:
             relationships.append(_relation)
     return relationships

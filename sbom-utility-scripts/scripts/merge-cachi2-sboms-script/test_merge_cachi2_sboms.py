@@ -68,12 +68,19 @@ def test_merge_both_formats_equal(data_dir: Path, isodate: Generator) -> None:
     result_cdx = json.loads(merge_sboms(f"{data_dir}/cachi2.bom.json", f"{data_dir}/syft.bom.json"))
     result_spdx = json.loads(merge_sboms(f"{data_dir}/cachi2.bom.spdx.json", f"{data_dir}/syft.bom.spdx.json"))
     cdx_components = []
+    build_relationships = []
+    for relationship in result_spdx["relationships"]:
+        if relationship["relationshipType"] == "BUILD_TOOL_OF":
+            build_relationships.append(relationship["spdxElementId"])
+
     for component in result_cdx["components"]:
         cdx_components.append(
             {"name": component["name"], "version": component.get("version"), "purl": component.get("purl")}
         )
     spdx_packages = []
     for package in result_spdx["packages"]:
+        if package["SPDXID"] in build_relationships:
+            continue
         purl = ""
         purl = None
         for ref in package.get("externalRefs", []):
