@@ -1,5 +1,7 @@
-import json
 import argparse
+import hashlib
+import json
+import datetime
 import pathlib
 
 from collections import namedtuple
@@ -87,6 +89,15 @@ def get_base_images_sbom_components(base_images_digests, is_last_from_scratch):
     return components
 
 
+def detect_sbom_format(sbom):
+    if sbom.get("bomFormat") == "CycloneDX":
+        return "cyclonedx"
+    elif sbom.get("spdxVersion"):
+        return "spdx"
+    else:
+        raise ValueError("Unknown SBOM format")
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Updates the sbom file with base images data based on the provided files"
@@ -112,6 +123,95 @@ def parse_args():
     return args
 
 
+def spdx_find_doc_and_root_package(relationships):
+    """Find SPDX root package and document in the SBOM
+
+    :param relationships: (List) - List of relationships in the SBOM
+
+    Method scans relationships for relationshipType "DESCRIBES" and returns
+    relatedSpdxElement and spdxElementId which are SPDX root package and document.
+    In the case there's no relationship with relationshipType "DESCRIBES" ValueError is raised.
+    """
+
+    for relationship in relationships:
+        if relationship["relationshipType"] == "DESCRIBES":
+            root_package1 = relationship["relatedSpdxElement"]
+            doc = relationship["spdxElementId"]
+            break
+    else:
+        raise ValueError("No DESCRIBES relationship found in the SBOM")
+    return root_package1, doc
+
+
+def spdx_create_dependency_package(component, annotation_date):
+    """Create SPDX package for the base image component."""
+
+    # Calculate unique identifier SPDXID based on the component name and purl
+    # See: https://github.com/konflux-ci/architecture/blob/main/ADR/0044-spdx-support.md
+    SPDXID = f"SPDXRef-Image-{component['name']}-" + f"{hashlib.sha256(component['purl'].encode()).hexdigest()}"
+    package = {
+        "SPDXID": SPDXID,
+        "name": component["name"],
+        "downloadLocation": "NOASSERTION",
+        # See more info about external refs here:
+        # https://spdx.github.io/spdx-spec/v2.3/package-information/#7211-description
+        "externalRefs": [
+            {
+                "referenceCategory": "PACKAGE-MANAGER",
+                "referenceType": "purl",
+                "referenceLocator": component["purl"],
+            }
+        ],
+        # Annotations are used to provide cyclonedx custom properties
+        # as json string
+        # See: https://github.com/konflux-ci/architecture/blob/main/ADR/0044-spdx-support.md
+        "annotations": [
+            {
+                "annotator": "Tool: konflux:jsonencoded",
+                "annotationDate": annotation_date,
+                "annotationType": "OTHER",
+                "comment": json.dumps(
+                    {"name": property["name"], "value": property["value"]},
+                    separators=(",", ":"),
+                ),
+            }
+            for property in component["properties"]
+        ],
+    }
+    return package, SPDXID
+
+
+def create_build_relationship(SPDXID, root_package1):
+    return {
+        "spdxElementId": SPDXID,
+        "relatedSpdxElement": root_package1,
+        "relationshipType": "BUILD_TOOL_OF",
+    }
+
+
+def create_build_packages_and_relationships(sbom, base_images_sbom_components):
+    """Create SPDX packages and relationships for base images components.
+
+    :param sbom: (Dict) - SBOM data
+    :param base_images_sbom_components: (List) - List of base images components
+
+    Method creates SPDX packages for base images components and relationships
+    """
+
+    packages = []
+    relationships = []
+    root_package, doc = spdx_find_doc_and_root_package(sbom["relationships"])
+    annotation_date = datetime.datetime.now().isoformat()[:-7] + "Z"
+    for component in base_images_sbom_components:
+        # create dependency package for each base image
+        package, SPDXID = spdx_create_dependency_package(component, annotation_date)
+
+        packages.append(package)
+        # Add relationship for parsed base image components and root package
+        relationships.append(create_build_relationship(SPDXID, root_package))
+    return packages, relationships
+
+
 def main():
 
     args = parse_args()
@@ -127,10 +227,17 @@ def main():
         sbom = json.load(f)
 
     base_images_sbom_components = get_base_images_sbom_components(base_images_digests, is_last_from_scratch)
-    if "formulation" in sbom:
-        sbom["formulation"].append({"components": base_images_sbom_components})
+    if detect_sbom_format(sbom) == "cyclonedx":
+        if "formulation" in sbom:
+            sbom["formulation"].append({"components": base_images_sbom_components})
+        else:
+            sbom.update({"formulation": [{"components": base_images_sbom_components}]})
     else:
-        sbom.update({"formulation": [{"components": base_images_sbom_components}]})
+        packages, relationships = create_build_packages_and_relationships(sbom, base_images_sbom_components)
+        # merge newly created packages for build tools with existing packages
+        sbom["packages"] = sbom.get("packages", []) + packages
+        # merge newly created relationships of the build tools with existing relationships
+        sbom["relationships"] = sbom.get("relationships", []) + relationships
 
     with args.sbom.open("w") as f:
         json.dump(sbom, f, indent=4)
