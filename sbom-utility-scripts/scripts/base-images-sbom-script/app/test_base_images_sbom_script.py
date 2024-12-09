@@ -1,4 +1,5 @@
 import json
+import datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
@@ -514,7 +515,7 @@ def test_get_base_images_sbom_components(base_images, base_images_digests, expec
 
 
 @pytest.mark.parametrize(
-    ["input_sbom", "parsed_dockerfile", "base_images_digests_lines", "expect_sbom"],
+    ["input_sbom", "parsed_dockerfile", "base_images_digests_lines", "expect_result"],
     [
         pytest.param(
             # minimal CycloneDX SBOM
@@ -710,13 +711,467 @@ def test_get_base_images_sbom_components(base_images, base_images_digests, expec
             },
             id="cyclonedx-has-formulation-base-from-scratch",
         ),
+        pytest.param(
+            # Unknown SBOM format
+            {},
+            # one builder images and one base image
+            {
+                "Stages": [
+                    {"From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"}},
+                    {"From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"}},
+                ]
+            },
+            # base image digests
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            ],
+            # expected output
+            ValueError(r"Unknown SBOM format"),
+            id="unknown-sbom-format",
+        ),
+        pytest.param(
+            # SPDX SBOM with no root package
+            {
+                "SPDXID": "SPDXRef-Document",
+                "spdxVersion": "SPDX-2.3",
+                "name": "MyProject",
+                "documentNamespace": "http://example.com/uid-1234",
+            },
+            # one builder images and one base image
+            {
+                "Stages": [
+                    {"From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"}},
+                    {"From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"}},
+                ]
+            },
+            # base image digests
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            ],
+            # expected output
+            ValueError(r"Found 0 ROOTs: \[\]"),
+            id="spdx-missing-root",
+        ),
+        pytest.param(
+            # SPDX SBOM with too many roots
+            {
+                "SPDXID": "SPDXRef-Document",
+                "spdxVersion": "SPDX-2.3",
+                "name": "MyProject",
+                "documentNamespace": "http://example.com/uid-1234",
+                "packages": [
+                    {
+                        "SPDXID": "SPDXRef-root1",
+                        "name": "",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                    {
+                        "SPDXID": "SPDXRef-root2",
+                        "name": "",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                ],
+                "relationships": [
+                    {
+                        "spdxElementId": "SPDXRef-Document",
+                        "relationshipType": "DESCRIBES",
+                        "relatedSpdxElement": "SPDXRef-root1",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-Document",
+                        "relationshipType": "DESCRIBES",
+                        "relatedSpdxElement": "SPDXRef-root2",
+                    },
+                ],
+            },
+            # one builder images and one base image
+            {
+                "Stages": [
+                    {"From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"}},
+                    {"From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"}},
+                ]
+            },
+            # base image digests
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            ],
+            # expected output
+            ValueError(r"Found 2 ROOTs: \['SPDXRef-root1', 'SPDXRef-root2'\]"),
+            id="spdx-too-many-roots",
+        ),
+        pytest.param(
+            # minimal valid SPDX SBOM
+            {
+                "SPDXID": "SPDXRef-Document",
+                "spdxVersion": "SPDX-2.3",
+                "name": "MyProject",
+                "documentNamespace": "http://example.com/uid-1234",
+                "packages": [
+                    {
+                        "SPDXID": "SPDXRef-image-my-cool-image",
+                        "name": "MyMainPackage",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                ],
+                "relationships": [
+                    {
+                        "spdxElementId": "SPDXRef-Document",
+                        "relationshipType": "DESCRIBES",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                ],
+            },
+            # one builder images and one base image
+            {
+                "Stages": [
+                    {"From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"}},
+                    {"From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"}},
+                ]
+            },
+            # base image digests
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            ],
+            # expected output
+            {
+                "SPDXID": "SPDXRef-Document",
+                "spdxVersion": "SPDX-2.3",
+                "name": "MyProject",
+                "documentNamespace": "http://example.com/uid-1234",
+                "packages": [
+                    {
+                        "SPDXID": "SPDXRef-image-my-cool-image",
+                        "name": "MyMainPackage",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                    {
+                        "SPDXID": "SPDXRef-image-quay.io/mkosiarc_rhtap/single-container-app-9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
+                        "name": "quay.io/mkosiarc_rhtap/single-container-app",
+                        "downloadLocation": "NOASSERTION",
+                        "externalRefs": [
+                            {
+                                "referenceCategory": "PACKAGE-MANAGER",
+                                "referenceType": "purl",
+                                "referenceLocator": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
+                            }
+                        ],
+                        "annotations": [
+                            {
+                                "annotator": "Tool: konflux:jsonencoded",
+                                "comment": '{"name":"konflux:container:is_builder_image:for_stage","value":"0"}',
+                                "annotationDate": "2024-12-09T12:00:00Z",
+                                "annotationType": "OTHER",
+                            }
+                        ],
+                    },
+                    {
+                        "SPDXID": "SPDXRef-image-registry.access.redhat.com/ubi8/ubi-0f22256f634f8205fbd9c438c387ccf2d4859250e04104571c93fdb89a62bae1",
+                        "name": "registry.access.redhat.com/ubi8/ubi",
+                        "downloadLocation": "NOASSERTION",
+                        "externalRefs": [
+                            {
+                                "referenceCategory": "PACKAGE-MANAGER",
+                                "referenceType": "purl",
+                                "referenceLocator": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
+                            }
+                        ],
+                        "annotations": [
+                            {
+                                "annotator": "Tool: konflux:jsonencoded",
+                                "comment": '{"name":"konflux:container:is_base_image","value":"true"}',
+                                "annotationDate": "2024-12-09T12:00:00Z",
+                                "annotationType": "OTHER",
+                            }
+                        ],
+                    },
+                ],
+                "relationships": [
+                    {
+                        "spdxElementId": "SPDXRef-Document",
+                        "relationshipType": "DESCRIBES",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-image-quay.io/mkosiarc_rhtap/single-container-app-9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
+                        "relationshipType": "BUILD_TOOL_OF",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi8/ubi-0f22256f634f8205fbd9c438c387ccf2d4859250e04104571c93fdb89a62bae1",
+                        "relationshipType": "BUILD_TOOL_OF",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                ],
+            },
+            id="spdx-minimal",
+        ),
+        pytest.param(
+            # minimal valid SPDX SBOM
+            {
+                "SPDXID": "SPDXRef-Document",
+                "spdxVersion": "SPDX-2.3",
+                "name": "MyProject",
+                "documentNamespace": "http://example.com/uid-1234",
+                "packages": [
+                    {
+                        "SPDXID": "SPDXRef-image-my-cool-image",
+                        "name": "MyMainPackage",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                ],
+                "relationships": [
+                    {
+                        "spdxElementId": "SPDXRef-Document",
+                        "relationshipType": "DESCRIBES",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                ],
+            },
+            # two builder images, base from scratch
+            {
+                "Stages": [
+                    {"From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"}},
+                    {"From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"}},
+                    {"From": {"Scratch": True}},
+                ]
+            },
+            # base image digests
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            ],
+            # expected output
+            {
+                "SPDXID": "SPDXRef-Document",
+                "spdxVersion": "SPDX-2.3",
+                "name": "MyProject",
+                "documentNamespace": "http://example.com/uid-1234",
+                "packages": [
+                    {
+                        "SPDXID": "SPDXRef-image-my-cool-image",
+                        "name": "MyMainPackage",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                    {
+                        "SPDXID": "SPDXRef-image-quay.io/mkosiarc_rhtap/single-container-app-9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
+                        "name": "quay.io/mkosiarc_rhtap/single-container-app",
+                        "downloadLocation": "NOASSERTION",
+                        "externalRefs": [
+                            {
+                                "referenceCategory": "PACKAGE-MANAGER",
+                                "referenceType": "purl",
+                                "referenceLocator": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
+                            }
+                        ],
+                        "annotations": [
+                            {
+                                "annotator": "Tool: konflux:jsonencoded",
+                                "comment": '{"name":"konflux:container:is_builder_image:for_stage","value":"0"}',
+                                "annotationDate": "2024-12-09T12:00:00Z",
+                                "annotationType": "OTHER",
+                            }
+                        ],
+                    },
+                    {
+                        "SPDXID": "SPDXRef-image-registry.access.redhat.com/ubi8/ubi-0f22256f634f8205fbd9c438c387ccf2d4859250e04104571c93fdb89a62bae1",
+                        "name": "registry.access.redhat.com/ubi8/ubi",
+                        "downloadLocation": "NOASSERTION",
+                        "externalRefs": [
+                            {
+                                "referenceCategory": "PACKAGE-MANAGER",
+                                "referenceType": "purl",
+                                "referenceLocator": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
+                            }
+                        ],
+                        "annotations": [
+                            {
+                                "annotator": "Tool: konflux:jsonencoded",
+                                "comment": '{"name":"konflux:container:is_builder_image:for_stage","value":"1"}',
+                                "annotationDate": "2024-12-09T12:00:00Z",
+                                "annotationType": "OTHER",
+                            }
+                        ],
+                    },
+                ],
+                "relationships": [
+                    {
+                        "spdxElementId": "SPDXRef-Document",
+                        "relationshipType": "DESCRIBES",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-image-quay.io/mkosiarc_rhtap/single-container-app-9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
+                        "relationshipType": "BUILD_TOOL_OF",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi8/ubi-0f22256f634f8205fbd9c438c387ccf2d4859250e04104571c93fdb89a62bae1",
+                        "relationshipType": "BUILD_TOOL_OF",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                ],
+            },
+            id="spdx-minimal-base-from-scratch",
+        ),
+        pytest.param(
+            # SPDX SBOM with some existing packages
+            {
+                "SPDXID": "SPDXRef-Document",
+                "spdxVersion": "SPDX-2.3",
+                "name": "MyProject",
+                "documentNamespace": "http://example.com/uid-1234",
+                "packages": [
+                    {
+                        "SPDXID": "SPDXRef-image-my-cool-image",
+                        "name": "MyMainPackage",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                    {
+                        "SPDXID": "SPDXRef-some-runtime-dep",
+                        "name": "SomeDependency",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                    {
+                        "SPDXID": "SPDXRef-some-builddep",
+                        "name": "BuildTool",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                ],
+                "relationships": [
+                    {
+                        "spdxElementId": "SPDXRef-Document",
+                        "relationshipType": "DESCRIBES",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-image-my-cool-image",
+                        "relationshipType": "CONTAINS",
+                        "relatedSpdxElement": "SPDXRef-some-runtime-dep",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-some-builddep",
+                        "relationshipType": "BUILD_TOOL_OF",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                ],
+            },
+            # two builder images, base from scratch
+            {
+                "Stages": [
+                    {"From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"}},
+                    {"From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"}},
+                    {"From": {"Scratch": True}},
+                ]
+            },
+            # base image digests
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            ],
+            # expected output
+            {
+                "SPDXID": "SPDXRef-Document",
+                "spdxVersion": "SPDX-2.3",
+                "name": "MyProject",
+                "documentNamespace": "http://example.com/uid-1234",
+                "packages": [
+                    {
+                        "SPDXID": "SPDXRef-image-my-cool-image",
+                        "name": "MyMainPackage",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                    {
+                        "SPDXID": "SPDXRef-some-runtime-dep",
+                        "name": "SomeDependency",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                    {
+                        "SPDXID": "SPDXRef-some-builddep",
+                        "name": "BuildTool",
+                        "downloadLocation": "NOASSERTION",
+                    },
+                    {
+                        "SPDXID": "SPDXRef-image-quay.io/mkosiarc_rhtap/single-container-app-9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
+                        "name": "quay.io/mkosiarc_rhtap/single-container-app",
+                        "downloadLocation": "NOASSERTION",
+                        "externalRefs": [
+                            {
+                                "referenceCategory": "PACKAGE-MANAGER",
+                                "referenceType": "purl",
+                                "referenceLocator": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
+                            }
+                        ],
+                        "annotations": [
+                            {
+                                "annotator": "Tool: konflux:jsonencoded",
+                                "comment": '{"name":"konflux:container:is_builder_image:for_stage","value":"0"}',
+                                "annotationDate": "2024-12-09T12:00:00Z",
+                                "annotationType": "OTHER",
+                            }
+                        ],
+                    },
+                    {
+                        "SPDXID": "SPDXRef-image-registry.access.redhat.com/ubi8/ubi-0f22256f634f8205fbd9c438c387ccf2d4859250e04104571c93fdb89a62bae1",
+                        "name": "registry.access.redhat.com/ubi8/ubi",
+                        "downloadLocation": "NOASSERTION",
+                        "externalRefs": [
+                            {
+                                "referenceCategory": "PACKAGE-MANAGER",
+                                "referenceType": "purl",
+                                "referenceLocator": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
+                            }
+                        ],
+                        "annotations": [
+                            {
+                                "annotator": "Tool: konflux:jsonencoded",
+                                "comment": '{"name":"konflux:container:is_builder_image:for_stage","value":"1"}',
+                                "annotationDate": "2024-12-09T12:00:00Z",
+                                "annotationType": "OTHER",
+                            }
+                        ],
+                    },
+                ],
+                "relationships": [
+                    {
+                        "spdxElementId": "SPDXRef-Document",
+                        "relationshipType": "DESCRIBES",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-image-my-cool-image",
+                        "relationshipType": "CONTAINS",
+                        "relatedSpdxElement": "SPDXRef-some-runtime-dep",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-some-builddep",
+                        "relationshipType": "BUILD_TOOL_OF",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-image-quay.io/mkosiarc_rhtap/single-container-app-9520a72cbb69edfca5cac88ea2a9e0e09142ec934952b9420d686e77765f002c",
+                        "relationshipType": "BUILD_TOOL_OF",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                    {
+                        "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi8/ubi-0f22256f634f8205fbd9c438c387ccf2d4859250e04104571c93fdb89a62bae1",
+                        "relationshipType": "BUILD_TOOL_OF",
+                        "relatedSpdxElement": "SPDXRef-image-my-cool-image",
+                    },
+                ],
+            },
+            id="spdx-nonminimal-base-from-scratch",
+        ),
     ],
 )
 def test_main(
     input_sbom: dict[str, Any],
     parsed_dockerfile: dict[str, Any],
     base_images_digests_lines: list[str],
-    expect_sbom: dict[str, Any],
+    expect_result: dict[str, Any] | Exception,
     tmp_path: Path,
     mocker: MockerFixture,
 ):
@@ -735,12 +1190,23 @@ def test_main(
     mock_args.base_images_digests = base_images_digests_raw_file
     mocker.patch("base_images_sbom_script.parse_args", return_value=mock_args)
 
-    main()
+    # mock datetime.now
+    mocker.patch(
+        "base_images_sbom_script._datetime_utc_now",
+        return_value=datetime.datetime(2024, 12, 9, 12, 0, 0, tzinfo=datetime.UTC),
+    )
 
-    with sbom_file.open("r") as f:
-        sbom = json.load(f)
+    if not isinstance(expect_result, Exception):
+        main()
 
-    assert sbom == expect_sbom
+        with sbom_file.open("r") as f:
+            sbom = json.load(f)
+
+        assert sbom == expect_result
+
+    else:
+        with pytest.raises(type(expect_result), match=str(expect_result)):
+            main()
 
 
 @pytest.mark.parametrize(

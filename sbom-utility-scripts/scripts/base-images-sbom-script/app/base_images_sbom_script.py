@@ -292,6 +292,11 @@ def detect_sbom_type(sbom: dict[str, Any]) -> Literal["cyclonedx", "spdx"]:
         raise ValueError("Unknown SBOM format")
 
 
+def _datetime_utc_now() -> datetime.datetime:
+    # a mockable datetime.datetime.now (just for tests):
+    return datetime.datetime.now(datetime.UTC)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Updates the sbom file with base images data based on the provided files"
@@ -339,7 +344,7 @@ def main() -> None:
     if detect_sbom_type(sbom) == "cyclonedx":
         update_cyclonedx_sbom(sbom, base_images_sbom_components)
     else:
-        annotation_date = datetime.datetime.now(datetime.UTC)
+        annotation_date = _datetime_utc_now()
         base_images_spdx = [cdx_to_spdx(c, annotation_date) for c in base_images_sbom_components]
         update_spdx_sbom(sbom, base_images_spdx)
 
