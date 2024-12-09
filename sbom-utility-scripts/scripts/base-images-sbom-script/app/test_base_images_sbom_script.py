@@ -576,6 +576,7 @@ def test_main_input_sbom_does_not_contain_formulation(tmp_path, mocker):
     # minimal input sbom file
     sbom_file.write_text(
         """{
+    "bomFormat": "CycloneDX",
     "project_name": "MyProject",
     "version": "1.0",
     "components": []
@@ -668,6 +669,7 @@ def test_main_input_sbom_does_not_contain_formulation_and_base_image_from_scratc
     # minimal input sbom file
     sbom_file.write_text(
         """{
+    "bomFormat": "CycloneDX",
     "project_name": "MyProject",
     "version": "1.0",
     "components": []
@@ -766,6 +768,7 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
     sbom_file.write_text(
         """
     {
+        "bomFormat": "CycloneDX",
         "project_name": "MyProject",
         "version": "1.0",
         "components": [],

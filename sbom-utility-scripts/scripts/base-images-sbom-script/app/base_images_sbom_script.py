@@ -3,7 +3,7 @@ import datetime
 import hashlib
 import json
 import pathlib
-from typing import Any, NamedTuple, NewType, TypedDict
+from typing import Any, Literal, NamedTuple, NewType, TypedDict
 
 from packageurl import PackageURL
 
@@ -283,6 +283,15 @@ def update_spdx_sbom(sbom: dict[str, Any], base_images: list[SPDXPackage]) -> No
     sbom.setdefault("relationships", []).extend(relationships)
 
 
+def detect_sbom_type(sbom: dict[str, Any]) -> Literal["cyclonedx", "spdx"]:
+    if sbom.get("bomFormat") == "CycloneDX":
+        return "cyclonedx"
+    elif sbom.get("spdxVersion"):
+        return "spdx"
+    else:
+        raise ValueError("Unknown SBOM format")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Updates the sbom file with base images data based on the provided files"
@@ -319,14 +328,20 @@ def main() -> None:
     base_images_digests_raw = args.base_images_digests.read_text().splitlines()
     base_images_digests = dict(item.split() for item in base_images_digests_raw)
 
+    base_images_sbom_components = get_base_images_sbom_components(base_images, base_images_digests)
+    # base_images_sbom_components could be empty, when having just one stage FROM scratch
+    if not base_images_sbom_components:
+        return
+
     with args.sbom.open("r") as f:
         sbom = json.load(f)
 
-    base_images_sbom_components = get_base_images_sbom_components(base_images, base_images_digests)
-
-    # base_images_sbom_components could be empty, when having just one stage FROM scratch
-    if base_images_sbom_components:
+    if detect_sbom_type(sbom) == "cyclonedx":
         update_cyclonedx_sbom(sbom, base_images_sbom_components)
+    else:
+        annotation_date = datetime.datetime.now(datetime.UTC)
+        base_images_spdx = [cdx_to_spdx(c, annotation_date) for c in base_images_sbom_components]
+        update_spdx_sbom(sbom, base_images_spdx)
 
     with args.sbom.open("w") as f:
         json.dump(sbom, f, indent=4)
