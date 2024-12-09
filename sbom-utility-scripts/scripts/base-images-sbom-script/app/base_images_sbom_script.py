@@ -18,7 +18,7 @@ def parse_image_reference_to_parts(image):
     :return: ParsedImage (namedTuple): the image parsed into individual parts
     """
 
-    # example image: registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac # noqa
+    # example image: registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac
     # repository_with_tag = registry.access.redhat.com/ubi8/ubi:latest
     # digest = sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac
     # repository = registry.access.redhat.com/ubi8/ubi

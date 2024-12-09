@@ -23,8 +23,8 @@ from base_images_sbom_script import (
                 "scratch",
             ],
             {
-                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
-                "registry.access.redhat.com/ubi8/ubi:latest": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",  # noqa
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             },
             [
                 {
@@ -61,8 +61,8 @@ from base_images_sbom_script import (
                 "registry.access.redhat.com/ubi8/ubi:latest",
             ],
             {
-                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
-                "registry.access.redhat.com/ubi8/ubi:latest": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",  # noqa
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             },
             [
                 {
@@ -91,7 +91,7 @@ from base_images_sbom_script import (
         (
             ["registry.access.redhat.com/ubi8/ubi:latest"],
             {
-                "registry.access.redhat.com/ubi8/ubi:latest": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",  # noqa
+                "registry.access.redhat.com/ubi8/ubi:latest": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             },
             [
                 {
@@ -107,7 +107,7 @@ from base_images_sbom_script import (
         (
             ["quay.io/mkosiarc_rhtap/single-container-app:f2566ab", "scratch"],
             {
-                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
             },
             [
                 {
@@ -139,10 +139,10 @@ from base_images_sbom_script import (
                 "scratch",
             ],
             {
-                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
-                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
-                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",  # noqa
-                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",  # noqa
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
+                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",
             },
             [
                 {
@@ -210,11 +210,11 @@ from base_images_sbom_script import (
                 ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             ],
             {
-                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
-                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
-                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",  # noqa
-                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",  # noqa
-                "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",  # noqa
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
+                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",
+                "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             },
             [
                 {
@@ -291,11 +291,11 @@ from base_images_sbom_script import (
                 ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             ],
             {
-                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
-                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
-                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",  # noqa
-                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",  # noqa
-                "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",  # noqa
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
+                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",
+                "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac": "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             },
             [
                 {
@@ -372,10 +372,10 @@ from base_images_sbom_script import (
                 "scratch",
             ],
             {
-                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
-                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
-                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",  # noqa
-                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",  # noqa
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943": "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
+                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944": "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",
             },
             [
                 {
@@ -435,8 +435,8 @@ from base_images_sbom_script import (
                 ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
             ],
             {
-                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
-                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
             },
             [
                 {
@@ -488,8 +488,8 @@ from base_images_sbom_script import (
                 ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
             ],
             {
-                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
-                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",  # noqa
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942": "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
             },
             [
                 {
@@ -537,7 +537,7 @@ from base_images_sbom_script import (
                 "oci-archive:export/out.ociarchive",
             ],
             {
-                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",  # noqa
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
             },
             [
                 {
