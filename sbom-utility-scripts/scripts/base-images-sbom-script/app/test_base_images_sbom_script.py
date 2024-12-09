@@ -1,14 +1,17 @@
-import pytest
 import json
-
+from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock
 
+import pytest
+from pytest_mock import MockerFixture
+
 from base_images_sbom_script import (
-    get_base_images_sbom_components,
+    ParsedImage,
     get_base_images_from_dockerfile,
+    get_base_images_sbom_components,
     main,
     parse_image_reference_to_parts,
-    ParsedImage,
 )
 
 
@@ -510,279 +513,234 @@ def test_get_base_images_sbom_components(base_images, base_images_digests, expec
     assert result == expected_result
 
 
-def test_main_input_sbom_does_not_contain_formulation(tmp_path, mocker):
-    sbom_file = tmp_path / "sbom.json"
-    parsed_dockerfile = tmp_path / "parsed_dockerfile.json"
-    base_images_digests_raw_file = tmp_path / "base_images_digests.txt"
-
-    # minimal input sbom file
-    sbom_file.write_text(
-        """{
-    "bomFormat": "CycloneDX",
-    "version": "1.0",
-    "components": []
-    }"""
-    )
-
-    # one builder images and one base image
-    parsed_dockerfile.write_text(
-        """
-        {
-            "Stages": [
-                {
-                    "From": {
-                        "Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"
-                    }
-                },
-                {
-                    "From": {
-                        "Image": "registry.access.redhat.com/ubi8/ubi:latest"
-                    }
-                }
-            ]
-        }
-        """
-    )
-    base_images_digests_raw_file.write_text(
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
-        "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-    )
-
-    # mock the parsed args, to avoid testing parse_args function
-    mock_args = MagicMock()
-    mock_args.sbom = sbom_file
-    mock_args.parsed_dockerfile = parsed_dockerfile
-    mock_args.base_images_digests = base_images_digests_raw_file
-    mocker.patch("base_images_sbom_script.parse_args", return_value=mock_args)
-
-    main()
-
-    expected_output = {
-        "formulation": [
+@pytest.mark.parametrize(
+    ["input_sbom", "parsed_dockerfile", "base_images_digests_lines", "expect_sbom"],
+    [
+        pytest.param(
+            # minimal CycloneDX SBOM
             {
-                "components": [
-                    {
-                        "type": "container",
-                        "name": "quay.io/mkosiarc_rhtap/single-container-app",
-                        "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
-                        "properties": [
-                            {
-                                "name": "konflux:container:is_builder_image:for_stage",
-                                "value": "0",
-                            }
-                        ],
-                    },
-                    {
-                        "type": "container",
-                        "name": "registry.access.redhat.com/ubi8/ubi",
-                        "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
-                        "properties": [
-                            {
-                                "name": "konflux:container:is_base_image",
-                                "value": "true",
-                            }
-                        ],
-                    },
+                "bomFormat": "CycloneDX",
+                "version": "1.0",
+                "components": [],
+            },
+            # one builder images and one base image
+            {
+                "Stages": [
+                    {"From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"}},
+                    {"From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"}},
                 ]
-            }
-        ]
-    }
-
-    with sbom_file.open("r") as f:
-        sbom = json.load(f)
-
-    assert "formulation" in sbom
-    assert expected_output["formulation"] == sbom["formulation"]
-
-
-def test_main_input_sbom_does_not_contain_formulation_and_base_image_from_scratch(tmp_path, mocker):
-    sbom_file = tmp_path / "sbom.json"
-    parsed_dockerfile = tmp_path / "parsed_dockerfile.json"
-    base_images_digests_raw_file = tmp_path / "base_images_digests.txt"
-
-    # minimal input sbom file
-    sbom_file.write_text(
-        """{
-    "bomFormat": "CycloneDX",
-    "version": "1.0",
-    "components": []
-    }"""
-    )
-
-    # two builder images and the last one is from scratch
-    parsed_dockerfile.write_text(
-        """
-        {
-            "Stages": [
-                {
-                    "From": {
-                        "Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"
-                    }
-                },
-                {
-                    "From": {
-                        "Image": "registry.access.redhat.com/ubi8/ubi:latest"
-                    }
-                },
-                {
-                    "From": {
-                        "Scratch": true
-                    }
-                }
-            ]
-        }
-        """
-    )
-    base_images_digests_raw_file.write_text(
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
-        "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-    )
-
-    # mock the parsed args, to avoid testing parse_args function
-    mock_args = MagicMock()
-    mock_args.sbom = sbom_file
-    mock_args.parsed_dockerfile = parsed_dockerfile
-    mock_args.base_images_digests = base_images_digests_raw_file
-    mocker.patch("base_images_sbom_script.parse_args", return_value=mock_args)
-
-    main()
-
-    expected_output = {
-        "formulation": [
+            },
+            # base image digests
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            ],
+            # expected output
             {
-                "components": [
+                "bomFormat": "CycloneDX",
+                "version": "1.0",
+                "components": [],
+                "formulation": [
                     {
-                        "type": "container",
-                        "name": "quay.io/mkosiarc_rhtap/single-container-app",
-                        "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
-                        "properties": [
+                        "components": [
                             {
-                                "name": "konflux:container:is_builder_image:for_stage",
-                                "value": "0",
-                            }
-                        ],
-                    },
-                    {
-                        "type": "container",
-                        "name": "registry.access.redhat.com/ubi8/ubi",
-                        "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
-                        "properties": [
+                                "type": "container",
+                                "name": "quay.io/mkosiarc_rhtap/single-container-app",
+                                "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
+                                "properties": [
+                                    {
+                                        "name": "konflux:container:is_builder_image:for_stage",
+                                        "value": "0",
+                                    }
+                                ],
+                            },
                             {
-                                "name": "konflux:container:is_builder_image:for_stage",
-                                "value": "1",
-                            }
-                        ],
-                    },
-                ]
-            }
-        ]
-    }
-
-    with sbom_file.open("r") as f:
-        sbom = json.load(f)
-
-    assert "formulation" in sbom
-    assert expected_output["formulation"] == sbom["formulation"]
-
-
-def test_main_input_sbom_contains_formulation(tmp_path, mocker):
-    sbom_file = tmp_path / "sbom.json"
-    parsed_dockerfile = tmp_path / "parsed_dockerfile.json"
-    base_images_digests_raw_file = tmp_path / "base_images_digests.txt"
-
-    # minimal sbom with existing formulation that contains components item
-    sbom_file.write_text(
-        """
-    {
-        "bomFormat": "CycloneDX",
-        "version": "1.0",
-        "components": [],
-        "formulation": [
-            {
-                "components": [
-                    {
-                        "type": "library",
-                        "name": "fresh",
-                        "version": "0.5.2",
-                        "purl": "pkg:npm/fresh@0.5.2"
-                    }
-                ]
-            }
-        ]
-    }
-    """
-    )
-
-    # two builder images and the last one is from scratch
-    parsed_dockerfile.write_text(
-        """
-        {
-            "Stages": [
-                {
-                    "From": {
-                        "Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"
-                    }
-                },
-                {
-                    "From": {
-                        "Image": "registry.access.redhat.com/ubi8/ubi:latest"
-                    }
-                },
-                {
-                    "From": {
-                        "Scratch": true
-                    }
-                }
-            ]
-        }
-        """
-    )
-    base_images_digests_raw_file.write_text(
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
-        "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-    )
-
-    # mock the parsed args, to avoid testing parse_args function
-    mock_args = MagicMock()
-    mock_args.sbom = sbom_file
-    mock_args.parsed_dockerfile = parsed_dockerfile
-    mock_args.base_images_digests = base_images_digests_raw_file
-    mocker.patch("base_images_sbom_script.parse_args", return_value=mock_args)
-
-    main()
-
-    expected_output = {
-        "components": [
-            {
-                "type": "container",
-                "name": "quay.io/mkosiarc_rhtap/single-container-app",
-                "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
-                "properties": [
-                    {
-                        "name": "konflux:container:is_builder_image:for_stage",
-                        "value": "0",
+                                "type": "container",
+                                "name": "registry.access.redhat.com/ubi8/ubi",
+                                "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
+                                "properties": [
+                                    {
+                                        "name": "konflux:container:is_base_image",
+                                        "value": "true",
+                                    }
+                                ],
+                            },
+                        ]
                     }
                 ],
             },
+            id="cyclonedx-no-formulation",
+        ),
+        pytest.param(
+            # minimal CycloneDX SBOM
             {
-                "type": "container",
-                "name": "registry.access.redhat.com/ubi8/ubi",
-                "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
-                "properties": [
+                "bomFormat": "CycloneDX",
+                "version": "1.0",
+                "components": [],
+            },
+            # two builder images, base from scratch
+            {
+                "Stages": [
+                    {"From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"}},
+                    {"From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"}},
+                    {"From": {"Scratch": True}},
+                ]
+            },
+            # base image digests
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            ],
+            # expected output
+            {
+                "bomFormat": "CycloneDX",
+                "version": "1.0",
+                "components": [],
+                "formulation": [
                     {
-                        "name": "konflux:container:is_builder_image:for_stage",
-                        "value": "1",
+                        "components": [
+                            {
+                                "type": "container",
+                                "name": "quay.io/mkosiarc_rhtap/single-container-app",
+                                "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
+                                "properties": [
+                                    {
+                                        "name": "konflux:container:is_builder_image:for_stage",
+                                        "value": "0",
+                                    }
+                                ],
+                            },
+                            {
+                                "type": "container",
+                                "name": "registry.access.redhat.com/ubi8/ubi",
+                                "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
+                                # Note: the property is "is_builder_image", not "is_base_image".
+                                # There is no base image, the base is from scratch.
+                                "properties": [
+                                    {
+                                        "name": "konflux:container:is_builder_image:for_stage",
+                                        "value": "1",
+                                    }
+                                ],
+                            },
+                        ]
                     }
                 ],
             },
-        ]
-    }
+            id="cyclonedx-no-formulation-base-from-scratch",
+        ),
+        pytest.param(
+            # CycloneDX SBOM with .formulation
+            {
+                "bomFormat": "CycloneDX",
+                "version": "1.0",
+                "components": [],
+                "formulation": [
+                    {
+                        "components": [
+                            {
+                                "type": "library",
+                                "name": "fresh",
+                                "version": "0.5.2",
+                                "purl": "pkg:npm/fresh@0.5.2",
+                            }
+                        ]
+                    }
+                ],
+            },
+            # two builder images, base from scratch
+            {
+                "Stages": [
+                    {"From": {"Image": "quay.io/mkosiarc_rhtap/single-container-app:f2566ab"}},
+                    {"From": {"Image": "registry.access.redhat.com/ubi8/ubi:latest"}},
+                    {"From": {"Scratch": True}},
+                ]
+            },
+            # base image digests
+            [
+                "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            ],
+            # expected output
+            {
+                "bomFormat": "CycloneDX",
+                "version": "1.0",
+                "components": [],
+                "formulation": [
+                    {
+                        "components": [
+                            {
+                                "type": "library",
+                                "name": "fresh",
+                                "version": "0.5.2",
+                                "purl": "pkg:npm/fresh@0.5.2",
+                            }
+                        ]
+                    },
+                    # The new formulation is appended to the existing formulations
+                    {
+                        "components": [
+                            {
+                                "type": "container",
+                                "name": "quay.io/mkosiarc_rhtap/single-container-app",
+                                "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
+                                "properties": [
+                                    {
+                                        "name": "konflux:container:is_builder_image:for_stage",
+                                        "value": "0",
+                                    }
+                                ],
+                            },
+                            {
+                                "type": "container",
+                                "name": "registry.access.redhat.com/ubi8/ubi",
+                                "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
+                                # Note: the property is "is_builder_image", not "is_base_image".
+                                # There is no base image, the base is from scratch.
+                                "properties": [
+                                    {
+                                        "name": "konflux:container:is_builder_image:for_stage",
+                                        "value": "1",
+                                    }
+                                ],
+                            },
+                        ]
+                    },
+                ],
+            },
+            id="cyclonedx-has-formulation-base-from-scratch",
+        ),
+    ],
+)
+def test_main(
+    input_sbom: dict[str, Any],
+    parsed_dockerfile: dict[str, Any],
+    base_images_digests_lines: list[str],
+    expect_sbom: dict[str, Any],
+    tmp_path: Path,
+    mocker: MockerFixture,
+):
+    sbom_file = tmp_path / "sbom.json"
+    parsed_dockerfile_file = tmp_path / "parsed_dockerfile.json"
+    base_images_digests_raw_file = tmp_path / "base_images_digests.txt"
+
+    sbom_file.write_text(json.dumps(input_sbom))
+    parsed_dockerfile_file.write_text(json.dumps(parsed_dockerfile))
+    base_images_digests_raw_file.write_text("\n".join(base_images_digests_lines))
+
+    # mock the parsed args, to avoid testing parse_args function
+    mock_args = MagicMock()
+    mock_args.sbom = sbom_file
+    mock_args.parsed_dockerfile = parsed_dockerfile_file
+    mock_args.base_images_digests = base_images_digests_raw_file
+    mocker.patch("base_images_sbom_script.parse_args", return_value=mock_args)
+
+    main()
 
     with sbom_file.open("r") as f:
         sbom = json.load(f)
 
-    # we are appending an item to the formulation key, so it should be at the end
-    assert expected_output == sbom["formulation"][-1]
+    assert sbom == expect_sbom
 
 
 @pytest.mark.parametrize(
