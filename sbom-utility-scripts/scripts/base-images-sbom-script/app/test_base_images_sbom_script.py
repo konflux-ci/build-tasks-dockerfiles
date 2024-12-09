@@ -30,9 +30,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/mkosiarc_rhtap/single-container-app",
-                    "purl": "pkg:oci/single-container-app@sha256"
-                    ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io"
-                    "/mkosiarc_rhtap/single-container-app",
+                    "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -43,8 +41,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "registry.access.redhat.com/ubi8/ubi",
-                    "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-                    "?repository_url=registry.access.redhat.com/ubi8/ubi",
+                    "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -68,9 +65,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/mkosiarc_rhtap/single-container-app",
-                    "purl": "pkg:oci/single-container-app@sha256"
-                    ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io"
-                    "/mkosiarc_rhtap/single-container-app",
+                    "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -81,8 +76,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "registry.access.redhat.com/ubi8/ubi",
-                    "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-                    "?repository_url=registry.access.redhat.com/ubi8/ubi",
+                    "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
                     "properties": [{"name": "konflux:container:is_base_image", "value": "true"}],
                 },
             ],
@@ -97,8 +91,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "registry.access.redhat.com/ubi8/ubi",
-                    "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-                    "?repository_url=registry.access.redhat.com/ubi8/ubi",
+                    "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
                     "properties": [{"name": "konflux:container:is_base_image", "value": "true"}],
                 },
             ],
@@ -113,9 +106,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/mkosiarc_rhtap/single-container-app",
-                    "purl": "pkg:oci/single-container-app@sha256"
-                    ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io"
-                    "/mkosiarc_rhtap/single-container-app",
+                    "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -128,14 +119,10 @@ from base_images_sbom_script import (
         # four builder images, and from scratch in last stage
         (
             [
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-                "quay.io/builder2/builder2:bbbbbbb@sha256"
-                ":2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
-                "quay.io/builder3/builder3:ccccccc@sha256"
-                ":3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
-                "quay.io/builder4/builder4:ddddddd@sha256"
-                ":4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
+                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",
                 "scratch",
             ],
             {
@@ -148,8 +135,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder1/builder1",
-                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941"
-                    "?repository_url=quay.io/builder1/builder1",
+                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/builder1/builder1",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -160,8 +146,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder2/builder2",
-                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942"
-                    "?repository_url=quay.io/builder2/builder2",
+                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942?repository_url=quay.io/builder2/builder2",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -172,8 +157,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder3/builder3",
-                    "purl": "pkg:oci/builder3@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943"
-                    "?repository_url=quay.io/builder3/builder3",
+                    "purl": "pkg:oci/builder3@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943?repository_url=quay.io/builder3/builder3",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -184,8 +168,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder4/builder4",
-                    "purl": "pkg:oci/builder4@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944"
-                    "?repository_url=quay.io/builder4/builder4",
+                    "purl": "pkg:oci/builder4@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944?repository_url=quay.io/builder4/builder4",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -198,16 +181,11 @@ from base_images_sbom_script import (
         # four builders and one parent image
         (
             [
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-                "quay.io/builder2/builder2:bbbbbbb@sha256"
-                ":2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
-                "quay.io/builder3/builder3:ccccccc@sha256"
-                ":3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
-                "quay.io/builder4/builder4:ddddddd@sha256"
-                ":4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",
-                "registry.access.redhat.com/ubi8/ubi:latest@sha256"
-                ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
+                "quay.io/builder4/builder4:ddddddd@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944",
+                "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             ],
             {
                 "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
@@ -220,8 +198,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder1/builder1",
-                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941"
-                    "?repository_url=quay.io/builder1/builder1",
+                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/builder1/builder1",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -232,8 +209,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder2/builder2",
-                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942"
-                    "?repository_url=quay.io/builder2/builder2",
+                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942?repository_url=quay.io/builder2/builder2",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -244,8 +220,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder3/builder3",
-                    "purl": "pkg:oci/builder3@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943"
-                    "?repository_url=quay.io/builder3/builder3",
+                    "purl": "pkg:oci/builder3@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943?repository_url=quay.io/builder3/builder3",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -256,8 +231,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder4/builder4",
-                    "purl": "pkg:oci/builder4@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944"
-                    "?repository_url=quay.io/builder4/builder4",
+                    "purl": "pkg:oci/builder4@sha256:4f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420944?repository_url=quay.io/builder4/builder4",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -268,8 +242,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "registry.access.redhat.com/ubi8/ubi",
-                    "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-                    "?repository_url=registry.access.redhat.com/ubi8/ubi",
+                    "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
                     "properties": [{"name": "konflux:container:is_base_image", "value": "true"}],
                 },
             ],
@@ -277,18 +250,12 @@ from base_images_sbom_script import (
         # 3 builders and one final base image. builder 1 is reused three times, resulting in multiple properties
         (
             [
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-                "quay.io/builder2/builder2:bbbbbbb@sha256"
-                ":2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-                "quay.io/builder3/builder3:ccccccc@sha256"
-                ":3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-                "registry.access.redhat.com/ubi8/ubi:latest@sha256"
-                ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             ],
             {
                 "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
@@ -301,8 +268,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder1/builder1",
-                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941"
-                    "?repository_url=quay.io/builder1/builder1",
+                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/builder1/builder1",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -321,8 +287,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder2/builder2",
-                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942"
-                    "?repository_url=quay.io/builder2/builder2",
+                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942?repository_url=quay.io/builder2/builder2",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -333,8 +298,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder3/builder3",
-                    "purl": "pkg:oci/builder3@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943"
-                    "?repository_url=quay.io/builder3/builder3",
+                    "purl": "pkg:oci/builder3@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943?repository_url=quay.io/builder3/builder3",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -359,16 +323,11 @@ from base_images_sbom_script import (
         # 3 builders and final base image is scratch. builder 1 is reused three times, resulting in multiple properties
         (
             [
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-                "quay.io/builder2/builder2:bbbbbbb@sha256"
-                ":2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-                "quay.io/builder3/builder3:ccccccc@sha256"
-                ":3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder3/builder3:ccccccc@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
                 "scratch",
             ],
             {
@@ -381,8 +340,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder1/builder1",
-                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941"
-                    "?repository_url=quay.io/builder1/builder1",
+                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/builder1/builder1",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -401,8 +359,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder2/builder2",
-                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942"
-                    "?repository_url=quay.io/builder2/builder2",
+                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942?repository_url=quay.io/builder2/builder2",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -413,8 +370,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder3/builder3",
-                    "purl": "pkg:oci/builder3@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943"
-                    "?repository_url=quay.io/builder3/builder3",
+                    "purl": "pkg:oci/builder3@sha256:3f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420943?repository_url=quay.io/builder3/builder3",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -427,12 +383,9 @@ from base_images_sbom_script import (
         # 2 builders and builder 1 is then reused as final base image, resulting in multiple properties
         (
             [
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
-                "quay.io/builder2/builder2:bbbbbbb@sha256"
-                ":2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
             ],
             {
                 "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
@@ -442,8 +395,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder1/builder1",
-                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941"
-                    "?repository_url=quay.io/builder1/builder1",
+                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/builder1/builder1",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -458,8 +410,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder2/builder2",
-                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942"
-                    "?repository_url=quay.io/builder2/builder2",
+                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942?repository_url=quay.io/builder2/builder2",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -472,20 +423,15 @@ from base_images_sbom_script import (
         # Two images, both reused and several oci-archives and from scratch layers
         (
             [
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
                 "scratch",
-                "quay.io/builder2/builder2:bbbbbbb@sha256"
-                ":2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
                 "scratch",
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
                 "oci-archive:export/out.ociarchive",
-                "quay.io/builder2/builder2:bbbbbbb@sha256"
-                ":2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
+                "quay.io/builder2/builder2:bbbbbbb@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942",
                 "oci-archive:export/out.ociarchive",
-                "quay.io/builder1/builder1:aaaaaaa@sha256"
-                ":1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
+                "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
             ],
             {
                 "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941": "quay.io/builder1/builder1:aaaaaaa@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941",
@@ -495,8 +441,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder1/builder1",
-                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941"
-                    "?repository_url=quay.io/builder1/builder1",
+                    "purl": "pkg:oci/builder1@sha256:1f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/builder1/builder1",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -515,8 +460,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/builder2/builder2",
-                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942"
-                    "?repository_url=quay.io/builder2/builder2",
+                    "purl": "pkg:oci/builder2@sha256:2f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420942?repository_url=quay.io/builder2/builder2",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -543,9 +487,7 @@ from base_images_sbom_script import (
                 {
                     "type": "container",
                     "name": "quay.io/mkosiarc_rhtap/single-container-app",
-                    "purl": "pkg:oci/single-container-app@sha256"
-                    ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io"
-                    "/mkosiarc_rhtap/single-container-app",
+                    "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
                     "properties": [
                         {
                             "name": "konflux:container:is_builder_image:for_stage",
@@ -603,12 +545,8 @@ def test_main_input_sbom_does_not_contain_formulation(tmp_path, mocker):
         """
     )
     base_images_digests_raw_file.write_text(
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab "
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256"
-        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
-        "registry.access.redhat.com/ubi8/ubi:latest "
-        "registry.access.redhat.com/ubi8/ubi"
-        ":latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
+        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
+        "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
     )
 
     # mock the parsed args, to avoid testing parse_args function
@@ -627,9 +565,7 @@ def test_main_input_sbom_does_not_contain_formulation(tmp_path, mocker):
                     {
                         "type": "container",
                         "name": "quay.io/mkosiarc_rhtap/single-container-app",
-                        "purl": "pkg:oci/single-container-app@sha256"
-                        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url"
-                        "=quay.io/mkosiarc_rhtap/single-container-app",
+                        "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
                         "properties": [
                             {
                                 "name": "konflux:container:is_builder_image:for_stage",
@@ -640,8 +576,7 @@ def test_main_input_sbom_does_not_contain_formulation(tmp_path, mocker):
                     {
                         "type": "container",
                         "name": "registry.access.redhat.com/ubi8/ubi",
-                        "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-                        "?repository_url=registry.access.redhat.com/ubi8/ubi",
+                        "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
                         "properties": [
                             {
                                 "name": "konflux:container:is_base_image",
@@ -701,12 +636,8 @@ def test_main_input_sbom_does_not_contain_formulation_and_base_image_from_scratc
         """
     )
     base_images_digests_raw_file.write_text(
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab "
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256"
-        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
-        "registry.access.redhat.com/ubi8/ubi:latest "
-        "registry.access.redhat.com/ubi8/ubi"
-        ":latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
+        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
+        "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
     )
 
     # mock the parsed args, to avoid testing parse_args function
@@ -725,9 +656,7 @@ def test_main_input_sbom_does_not_contain_formulation_and_base_image_from_scratc
                     {
                         "type": "container",
                         "name": "quay.io/mkosiarc_rhtap/single-container-app",
-                        "purl": "pkg:oci/single-container-app@sha256"
-                        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url"
-                        "=quay.io/mkosiarc_rhtap/single-container-app",
+                        "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
                         "properties": [
                             {
                                 "name": "konflux:container:is_builder_image:for_stage",
@@ -738,8 +667,7 @@ def test_main_input_sbom_does_not_contain_formulation_and_base_image_from_scratc
                     {
                         "type": "container",
                         "name": "registry.access.redhat.com/ubi8/ubi",
-                        "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-                        "?repository_url=registry.access.redhat.com/ubi8/ubi",
+                        "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
                         "properties": [
                             {
                                 "name": "konflux:container:is_builder_image:for_stage",
@@ -813,12 +741,8 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
         """
     )
     base_images_digests_raw_file.write_text(
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab "
-        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256"
-        ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
-        "registry.access.redhat.com/ubi8/ubi:latest "
-        "registry.access.redhat.com/ubi8/ubi"
-        ":latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
+        "quay.io/mkosiarc_rhtap/single-container-app:f2566ab quay.io/mkosiarc_rhtap/single-container-app:f2566ab@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941\n"
+        "registry.access.redhat.com/ubi8/ubi:latest registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
     )
 
     # mock the parsed args, to avoid testing parse_args function
@@ -835,9 +759,7 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
             {
                 "type": "container",
                 "name": "quay.io/mkosiarc_rhtap/single-container-app",
-                "purl": "pkg:oci/single-container-app@sha256"
-                ":8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io"
-                "/mkosiarc_rhtap/single-container-app",
+                "purl": "pkg:oci/single-container-app@sha256:8f99627e843e931846855c5d899901bf093f5093e613a92745696a26b5420941?repository_url=quay.io/mkosiarc_rhtap/single-container-app",
                 "properties": [
                     {
                         "name": "konflux:container:is_builder_image:for_stage",
@@ -848,8 +770,7 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
             {
                 "type": "container",
                 "name": "registry.access.redhat.com/ubi8/ubi",
-                "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-                "?repository_url=registry.access.redhat.com/ubi8/ubi",
+                "purl": "pkg:oci/ubi@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac?repository_url=registry.access.redhat.com/ubi8/ubi",
                 "properties": [
                     {
                         "name": "konflux:container:is_builder_image:for_stage",
@@ -872,8 +793,7 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
     [
         # basic example
         (
-            "registry.access.redhat.com/ubi8/ubi:latest@sha256"
-            ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             ParsedImage(
                 repository="registry.access.redhat.com/ubi8/ubi",
                 digest="sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
@@ -882,8 +802,7 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
         ),
         # missing tag
         (
-            "registry.access.redhat.com/ubi8/ubi:<none>@sha256"
-            ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            "registry.access.redhat.com/ubi8/ubi:<none>@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             ParsedImage(
                 repository="registry.access.redhat.com/ubi8/ubi",
                 digest="sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
@@ -892,8 +811,7 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
         ),
         # registry with port
         (
-            "some_registry_with_port:5000/ubi8/ubi:latest@sha256"
-            ":627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
+            "some_registry_with_port:5000/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
             ParsedImage(
                 repository="some_registry_with_port:5000/ubi8/ubi",
                 digest="sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac",
@@ -902,8 +820,7 @@ def test_main_input_sbom_contains_formulation(tmp_path, mocker):
         ),
         # multiple path components
         (
-            "quay.io/redhat-user-workloads/rh-acs-tenant/acs/collector:358b6cfb019e436d1fa61a09fcca04e081e1c993"
-            "@sha256:8e5d62b32a5bb6d73ca7f54941f00ee8807563ddcb424660894dea85ed1f109d",
+            "quay.io/redhat-user-workloads/rh-acs-tenant/acs/collector:358b6cfb019e436d1fa61a09fcca04e081e1c993@sha256:8e5d62b32a5bb6d73ca7f54941f00ee8807563ddcb424660894dea85ed1f109d",
             ParsedImage(
                 repository="quay.io/redhat-user-workloads/rh-acs-tenant/acs/collector",
                 digest="sha256:8e5d62b32a5bb6d73ca7f54941f00ee8807563ddcb424660894dea85ed1f109d",
