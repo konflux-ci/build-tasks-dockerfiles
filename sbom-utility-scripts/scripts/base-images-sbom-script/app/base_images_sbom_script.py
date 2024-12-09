@@ -1,14 +1,27 @@
-import json
 import argparse
+import json
 import pathlib
+from typing import Any, NamedTuple, TypedDict
 
-from collections import namedtuple
 from packageurl import PackageURL
 
-ParsedImage = namedtuple("ParsedImage", "repository, digest, name")
+
+class ParsedImage(NamedTuple):
+    repository: str
+    digest: str
+    name: str
 
 
-def parse_image_reference_to_parts(image):
+class CDXComponent(TypedDict):
+    """The relevant attributes of a CycloneDX Component."""
+
+    type: str
+    name: str
+    purl: str
+    properties: list[dict[str, str]]
+
+
+def parse_image_reference_to_parts(image: str) -> ParsedImage:
     """
     This function expects that the image is in the expected format
     as generated from the output of
@@ -33,28 +46,30 @@ def parse_image_reference_to_parts(image):
     return ParsedImage(repository=repository, digest=digest, name=name)
 
 
-def get_base_images_sbom_components(base_images, base_images_digests):
+def get_base_images_sbom_components(
+    base_images: list[str], base_images_digests: dict[str, str]
+) -> list[CDXComponent]:
     """
     Creates the base images sbom data
 
-    :param base_images: (List) - List of base images used during build, in the order they were used. The values here
-                                 are the keys in the base_images_digests dict.
-                                 For example:
-                                 ["registry.access.redhat.com/ubi8/ubi:latest"]
-    :param base_images_digests: (Dict) - Dict of base images references, where the key is the image reference as
-                                         used in the original Dockerfile (The elements of base_images param)
-                                         and the values are the full image reference with digests that was
-                                         actually used by buildah during build time.
-                                         For example:
-                                         {
-                                           "registry.access.redhat.com/ubi8/ubi:latest":
-                                           "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-                                         }
-    :return: components (List) - List of dict items in which each item contains sbom data about each base image
+    :param base_images: List of base images used during build, in the order they were used. The values here
+                        are the keys in the base_images_digests dict.
+                        For example:
+                        ["registry.access.redhat.com/ubi8/ubi:latest"]
+    :param base_images_digests: Dict of base images references, where the key is the image reference as
+                                used in the original Dockerfile (The elements of base_images param)
+                                and the values are the full image reference with digests that was
+                                actually used by buildah during build time.
+                                For example:
+                                {
+                                  "registry.access.redhat.com/ubi8/ubi:latest":
+                                  "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
+                                }
+    :return: List of dict items in which each item contains sbom data about each base image
     """
 
-    components = []
-    already_used_base_images = set()
+    components: list[CDXComponent] = []
+    already_used_base_images: set[str] = set()
 
     for index, image in enumerate(base_images):
         # flatpak archive and scratch are not real base images. So we skip them, but
@@ -102,7 +117,7 @@ def get_base_images_sbom_components(base_images, base_images_digests):
                 if component["purl"] == purl_str:
                     component["properties"].append(property)
         else:
-            component = {
+            component: CDXComponent = {
                 "type": "container",
                 "name": parsed_image.repository,
                 "purl": purl_str,
@@ -114,13 +129,13 @@ def get_base_images_sbom_components(base_images, base_images_digests):
     return components
 
 
-def get_base_images_from_dockerfile(parsed_dockerfile):
+def get_base_images_from_dockerfile(parsed_dockerfile: dict[str, Any]) -> list[str]:
     """
     Reads the base images from provided parsed dockerfile
 
-    :param parsed_dockerfile: (Dict) - Contents of the parsed dockerfile
-    :return: base_images (List) - List of base images used during build as extracted
-                                  from the dockerfile in the order they were used.
+    :param parsed_dockerfile: Contents of the parsed dockerfile
+    :return: base_images List of base images used during build as extracted
+                         from the dockerfile in the order they were used.
 
     Example:
     If the Dockerfile looks like
@@ -144,7 +159,7 @@ def get_base_images_from_dockerfile(parsed_dockerfile):
         ]
     },
     """
-    base_images = []
+    base_images: list[str] = []
 
     # this part of the json is the relevant one that contains the
     # info about base images
@@ -168,7 +183,7 @@ def get_base_images_from_dockerfile(parsed_dockerfile):
     return base_images
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Updates the sbom file with base images data based on the provided files"
     )
@@ -193,8 +208,7 @@ def parse_args():
     return args
 
 
-def main():
-
+def main() -> None:
     args = parse_args()
 
     with args.parsed_dockerfile.open("r") as f:
