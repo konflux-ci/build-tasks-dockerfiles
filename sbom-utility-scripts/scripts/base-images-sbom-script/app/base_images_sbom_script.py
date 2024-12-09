@@ -183,6 +183,16 @@ def get_base_images_from_dockerfile(parsed_dockerfile: dict[str, Any]) -> list[s
     return base_images
 
 
+def update_cyclonedx_sbom(sbom: dict[str, Any], base_images: list[CDXComponent]) -> None:
+    """Update (in-place) a CycloneDX SBOM with a list of base images.
+
+    Add an item containing the base image list into the .formulation section.
+
+    :param base_images: list of base images in CycloneDX format
+    """
+    sbom.setdefault("formulation", []).append({"components": base_images})
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Updates the sbom file with base images data based on the provided files"
@@ -226,10 +236,7 @@ def main() -> None:
 
     # base_images_sbom_components could be empty, when having just one stage FROM scratch
     if base_images_sbom_components:
-        if "formulation" in sbom:
-            sbom["formulation"].append({"components": base_images_sbom_components})
-        else:
-            sbom.update({"formulation": [{"components": base_images_sbom_components}]})
+        update_cyclonedx_sbom(sbom, base_images_sbom_components)
 
     with args.sbom.open("w") as f:
         json.dump(sbom, f, indent=4)
