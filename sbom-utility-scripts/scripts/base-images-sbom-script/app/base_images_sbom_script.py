@@ -1,7 +1,9 @@
 import argparse
+import datetime
+import hashlib
 import json
 import pathlib
-from typing import Any, NamedTuple, TypedDict
+from typing import Any, NamedTuple, NewType, TypedDict
 
 from packageurl import PackageURL
 
@@ -19,6 +21,21 @@ class CDXComponent(TypedDict):
     name: str
     purl: str
     properties: list[dict[str, str]]
+
+
+SPDXID = NewType("SPDXID", str)
+
+
+class SPDXPackage(TypedDict):
+    """The relevant attributes of an SPDX Package (the equivalent of a CycloneDX Component)."""
+
+    # SPDXID, name and downloadLocation are required per the SPDX 2.3 schema
+    # https://github.com/spdx/spdx-spec/blob/ed8c9b520963b651fce3c86422b387e92e6d9a8f/schemas/spdx-schema.json#L438
+    SPDXID: SPDXID
+    name: str
+    downloadLocation: str
+    externalRefs: list[dict[str, str]]
+    annotations: list[dict[str, str]]
 
 
 def parse_image_reference_to_parts(image: str) -> ParsedImage:
@@ -183,6 +200,57 @@ def get_base_images_from_dockerfile(parsed_dockerfile: dict[str, Any]) -> list[s
     return base_images
 
 
+def cdx_to_spdx(cdx: CDXComponent, annotation_date: datetime.datetime) -> SPDXPackage:
+    name = cdx["name"]
+    purl = cdx["purl"]
+    # consistent with index_image_sbom_script.py
+    spdxid = SPDXID(f"SPDXRef-image-{name}-{hashlib.sha256(purl.encode()).hexdigest()}")
+
+    return {
+        "SPDXID": spdxid,
+        "name": name,
+        "downloadLocation": "NOASSERTION",
+        # https://github.com/konflux-ci/architecture/blob/main/ADR/0044-spdx-support.md#componentpurl
+        "externalRefs": [
+            {
+                "referenceCategory": "PACKAGE-MANAGER",
+                "referenceType": "purl",
+                "referenceLocator": purl,
+            },
+        ],
+        # https://github.com/konflux-ci/architecture/blob/main/ADR/0044-spdx-support.md#componentproperties
+        "annotations": [
+            {
+                "annotator": "Tool: konflux:jsonencoded",
+                "comment": json.dumps(cdx_property, separators=(",", ":")),
+                # https://spdx.github.io/spdx-spec/v2.3/annotations/#122-annotation-date-field
+                "annotationDate": annotation_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "annotationType": "OTHER",
+            }
+            for cdx_property in cdx["properties"]
+        ],
+    }
+
+
+def find_spdx_root_package(sbom: dict[str, Any]) -> SPDXID:
+    """Find the element that's in relationship <DOCUMENT> DESCRIBES <ELEMENT>.
+
+    If there isn't exactly one such element, raise an error.
+    """
+    doc_spxid = sbom["SPDXID"]
+    doc_describes = [
+        r["relatedSpdxElement"]
+        for r in sbom.get("relationships", [])
+        if r["spdxElementId"] == doc_spxid and r["relationshipType"] == "DESCRIBES"
+    ]
+    if len(doc_describes) != 1:
+        raise ValueError(
+            "Expected to find exactly one <DOCUMENT> DESCRIBES <ROOT> relationship. "
+            f"Found {len(doc_describes)} ROOTs: {doc_describes}"
+        )
+    return SPDXID(doc_describes[0])
+
+
 def update_cyclonedx_sbom(sbom: dict[str, Any], base_images: list[CDXComponent]) -> None:
     """Update (in-place) a CycloneDX SBOM with a list of base images.
 
@@ -191,6 +259,28 @@ def update_cyclonedx_sbom(sbom: dict[str, Any], base_images: list[CDXComponent])
     :param base_images: list of base images in CycloneDX format
     """
     sbom.setdefault("formulation", []).append({"components": base_images})
+
+
+def update_spdx_sbom(sbom: dict[str, Any], base_images: list[SPDXPackage]) -> None:
+    """Update (in-place) an SPDX SBOM with a list of base images.
+
+    Add the base images to the .packages section.
+    Add <BASE_IMAGE> BUILD_TOOL_OF <ROOT> relationships to the .relationships section.
+
+    :param base_images: list of base images in SPDX format
+    """
+    root = find_spdx_root_package(sbom)
+    relationships = [
+        {
+            "spdxElementId": base_image["SPDXID"],
+            "relationshipType": "BUILD_TOOL_OF",
+            "relatedSpdxElement": root,
+        }
+        for base_image in base_images
+    ]
+
+    sbom.setdefault("packages", []).extend(base_images)
+    sbom.setdefault("relationships", []).extend(relationships)
 
 
 def parse_args() -> argparse.Namespace:
