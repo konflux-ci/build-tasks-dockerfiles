@@ -1,14 +1,44 @@
-import json
 import argparse
+import datetime
+import hashlib
+import json
 import pathlib
+from typing import Any, Literal, NamedTuple, NewType, TypedDict
 
-from collections import namedtuple
 from packageurl import PackageURL
 
-ParsedImage = namedtuple("ParsedImage", "repository, digest, name")
+
+class ParsedImage(NamedTuple):
+    repository: str
+    digest: str
+    name: str
 
 
-def parse_image_reference_to_parts(image):
+class CDXComponent(TypedDict):
+    """The relevant attributes of a CycloneDX Component."""
+
+    type: str
+    name: str
+    purl: str
+    properties: list[dict[str, str]]
+
+
+SPDXID = NewType("SPDXID", str)
+
+
+class SPDXPackage(TypedDict):
+    """The relevant attributes of an SPDX Package (the equivalent of a CycloneDX Component)."""
+
+    # SPDXID, name and downloadLocation are required per the SPDX 2.3 schema
+    # https://github.com/spdx/spdx-spec/blob/ed8c9b520963b651fce3c86422b387e92e6d9a8f/schemas/spdx-schema.json#L438
+    SPDXID: SPDXID
+    name: str
+    downloadLocation: str
+    externalRefs: list[dict[str, str]]
+    annotations: list[dict[str, str]]
+
+
+def parse_image_reference_to_parts(image: str) -> ParsedImage:
     """
     This function expects that the image is in the expected format
     as generated from the output of
@@ -18,7 +48,7 @@ def parse_image_reference_to_parts(image):
     :return: ParsedImage (namedTuple): the image parsed into individual parts
     """
 
-    # example image: registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac # noqa
+    # example image: registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac
     # repository_with_tag = registry.access.redhat.com/ubi8/ubi:latest
     # digest = sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac
     # repository = registry.access.redhat.com/ubi8/ubi
@@ -33,28 +63,28 @@ def parse_image_reference_to_parts(image):
     return ParsedImage(repository=repository, digest=digest, name=name)
 
 
-def get_base_images_sbom_components(base_images, base_images_digests):
+def get_base_images_sbom_components(base_images: list[str], base_images_digests: dict[str, str]) -> list[CDXComponent]:
     """
     Creates the base images sbom data
 
-    :param base_images: (List) - List of base images used during build, in the order they were used. The values here
-                                 are the keys in the base_images_digests dict.
-                                 For example:
-                                 ["registry.access.redhat.com/ubi8/ubi:latest"]
-    :param base_images_digests: (Dict) - Dict of base images references, where the key is the image reference as
-                                         used in the original Dockerfile (The elements of base_images param)
-                                         and the values are the full image reference with digests that was
-                                         actually used by buildah during build time.
-                                         For example:
-                                         {
-                                           "registry.access.redhat.com/ubi8/ubi:latest":
-                                           "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
-                                         }
-    :return: components (List) - List of dict items in which each item contains sbom data about each base image
+    :param base_images: List of base images used during build, in the order they were used. The values here
+                        are the keys in the base_images_digests dict.
+                        For example:
+                        ["registry.access.redhat.com/ubi8/ubi:latest"]
+    :param base_images_digests: Dict of base images references, where the key is the image reference as
+                                used in the original Dockerfile (The elements of base_images param)
+                                and the values are the full image reference with digests that was
+                                actually used by buildah during build time.
+                                For example:
+                                {
+                                  "registry.access.redhat.com/ubi8/ubi:latest":
+                                  "registry.access.redhat.com/ubi8/ubi:latest@sha256:627867e53ad6846afba2dfbf5cef1d54c868a9025633ef0afd546278d4654eac"
+                                }
+    :return: List of dict items in which each item contains sbom data about each base image
     """
 
-    components = []
-    already_used_base_images = set()
+    components: list[CDXComponent] = []
+    already_used_base_images: set[str] = set()
 
     for index, image in enumerate(base_images):
         # flatpak archive and scratch are not real base images. So we skip them, but
@@ -102,7 +132,7 @@ def get_base_images_sbom_components(base_images, base_images_digests):
                 if component["purl"] == purl_str:
                     component["properties"].append(property)
         else:
-            component = {
+            component: CDXComponent = {
                 "type": "container",
                 "name": parsed_image.repository,
                 "purl": purl_str,
@@ -114,13 +144,13 @@ def get_base_images_sbom_components(base_images, base_images_digests):
     return components
 
 
-def get_base_images_from_dockerfile(parsed_dockerfile):
+def get_base_images_from_dockerfile(parsed_dockerfile: dict[str, Any]) -> list[str]:
     """
     Reads the base images from provided parsed dockerfile
 
-    :param parsed_dockerfile: (Dict) - Contents of the parsed dockerfile
-    :return: base_images (List) - List of base images used during build as extracted
-                                  from the dockerfile in the order they were used.
+    :param parsed_dockerfile: Contents of the parsed dockerfile
+    :return: base_images List of base images used during build as extracted
+                         from the dockerfile in the order they were used.
 
     Example:
     If the Dockerfile looks like
@@ -144,7 +174,7 @@ def get_base_images_from_dockerfile(parsed_dockerfile):
         ]
     },
     """
-    base_images = []
+    base_images: list[str] = []
 
     # this part of the json is the relevant one that contains the
     # info about base images
@@ -168,7 +198,104 @@ def get_base_images_from_dockerfile(parsed_dockerfile):
     return base_images
 
 
-def parse_args():
+def cdx_to_spdx(cdx: CDXComponent, annotation_date: datetime.datetime) -> SPDXPackage:
+    name = cdx["name"]
+    purl = cdx["purl"]
+    # consistent with index_image_sbom_script.py
+    spdxid = SPDXID(f"SPDXRef-image-{name}-{hashlib.sha256(purl.encode()).hexdigest()}")
+
+    return {
+        "SPDXID": spdxid,
+        "name": name,
+        "downloadLocation": "NOASSERTION",
+        # https://github.com/konflux-ci/architecture/blob/main/ADR/0044-spdx-support.md#componentpurl
+        "externalRefs": [
+            {
+                "referenceCategory": "PACKAGE-MANAGER",
+                "referenceType": "purl",
+                "referenceLocator": purl,
+            },
+        ],
+        # https://github.com/konflux-ci/architecture/blob/main/ADR/0044-spdx-support.md#componentproperties
+        "annotations": [
+            {
+                "annotator": "Tool: konflux:jsonencoded",
+                "comment": json.dumps(cdx_property, separators=(",", ":")),
+                # https://spdx.github.io/spdx-spec/v2.3/annotations/#122-annotation-date-field
+                "annotationDate": annotation_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "annotationType": "OTHER",
+            }
+            for cdx_property in cdx["properties"]
+        ],
+    }
+
+
+def find_spdx_root_package(sbom: dict[str, Any]) -> SPDXID:
+    """Find the element that's in relationship <DOCUMENT> DESCRIBES <ELEMENT>.
+
+    If there isn't exactly one such element, raise an error.
+    """
+    doc_spxid = sbom["SPDXID"]
+    doc_describes = [
+        r["relatedSpdxElement"]
+        for r in sbom.get("relationships", [])
+        if r["spdxElementId"] == doc_spxid and r["relationshipType"] == "DESCRIBES"
+    ]
+    if len(doc_describes) != 1:
+        raise ValueError(
+            "Expected to find exactly one <DOCUMENT> DESCRIBES <ROOT> relationship. "
+            f"Found {len(doc_describes)} ROOTs: {doc_describes}"
+        )
+    return SPDXID(doc_describes[0])
+
+
+def update_cyclonedx_sbom(sbom: dict[str, Any], base_images: list[CDXComponent]) -> None:
+    """Update (in-place) a CycloneDX SBOM with a list of base images.
+
+    Add an item containing the base image list into the .formulation section.
+
+    :param base_images: list of base images in CycloneDX format
+    """
+    sbom.setdefault("formulation", []).append({"components": base_images})
+
+
+def update_spdx_sbom(sbom: dict[str, Any], base_images: list[SPDXPackage]) -> None:
+    """Update (in-place) an SPDX SBOM with a list of base images.
+
+    Add the base images to the .packages section.
+    Add <BASE_IMAGE> BUILD_TOOL_OF <ROOT> relationships to the .relationships section.
+
+    :param base_images: list of base images in SPDX format
+    """
+    root = find_spdx_root_package(sbom)
+    relationships = [
+        {
+            "spdxElementId": base_image["SPDXID"],
+            "relationshipType": "BUILD_TOOL_OF",
+            "relatedSpdxElement": root,
+        }
+        for base_image in base_images
+    ]
+
+    sbom.setdefault("packages", []).extend(base_images)
+    sbom.setdefault("relationships", []).extend(relationships)
+
+
+def detect_sbom_type(sbom: dict[str, Any]) -> Literal["cyclonedx", "spdx"]:
+    if sbom.get("bomFormat") == "CycloneDX":
+        return "cyclonedx"
+    elif sbom.get("spdxVersion"):
+        return "spdx"
+    else:
+        raise ValueError("Unknown SBOM format")
+
+
+def _datetime_utc_now() -> datetime.datetime:
+    # a mockable datetime.datetime.now (just for tests):
+    return datetime.datetime.now(datetime.UTC)
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Updates the sbom file with base images data based on the provided files"
     )
@@ -193,8 +320,7 @@ def parse_args():
     return args
 
 
-def main():
-
+def main() -> None:
     args = parse_args()
 
     with args.parsed_dockerfile.open("r") as f:
@@ -205,17 +331,20 @@ def main():
     base_images_digests_raw = args.base_images_digests.read_text().splitlines()
     base_images_digests = dict(item.split() for item in base_images_digests_raw)
 
+    base_images_sbom_components = get_base_images_sbom_components(base_images, base_images_digests)
+    # base_images_sbom_components could be empty, when having just one stage FROM scratch
+    if not base_images_sbom_components:
+        return
+
     with args.sbom.open("r") as f:
         sbom = json.load(f)
 
-    base_images_sbom_components = get_base_images_sbom_components(base_images, base_images_digests)
-
-    # base_images_sbom_components could be empty, when having just one stage FROM scratch
-    if base_images_sbom_components:
-        if "formulation" in sbom:
-            sbom["formulation"].append({"components": base_images_sbom_components})
-        else:
-            sbom.update({"formulation": [{"components": base_images_sbom_components}]})
+    if detect_sbom_type(sbom) == "cyclonedx":
+        update_cyclonedx_sbom(sbom, base_images_sbom_components)
+    else:
+        annotation_date = _datetime_utc_now()
+        base_images_spdx = [cdx_to_spdx(c, annotation_date) for c in base_images_sbom_components]
+        update_spdx_sbom(sbom, base_images_spdx)
 
     with args.sbom.open("w") as f:
         json.dump(sbom, f, indent=4)
