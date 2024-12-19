@@ -41,7 +41,7 @@ def get_purls(sbom: dict[str, Any]) -> set[str]:
 
 
 def test_merge_sboms(data_dir: Path) -> None:
-    result = merge_sboms(f"{data_dir}/cachi2.bom.json", f"{data_dir}/syft.bom.json")
+    result = merge_sboms(f"{data_dir}/syft.bom.json", f"{data_dir}/cachi2.bom.json")
 
     with open(f"{data_dir}/merged.bom.json") as file:
         expected_sbom = json.load(file)
@@ -130,7 +130,7 @@ def test_merging_tools_metadata(syft_tools_metadata: str, expected_result: Any, 
     with open(cachi2_sbom_path, "w") as file:
         json.dump(cachi2_sbom, file)
 
-    result = merge_sboms(cachi2_sbom_path, syft_sbom_path)
+    result = merge_sboms(syft_sbom_path, cachi2_sbom_path)
 
     assert json.loads(result)["metadata"]["tools"] == expected_result
 
@@ -164,4 +164,4 @@ def test_invalid_tools_format(tmpdir: Path) -> None:
         json.dump(cachi2_sbom, file)
 
     with pytest.raises(RuntimeError):
-        merge_sboms(cachi2_sbom_path, syft_sbom_path)
+        merge_sboms(syft_sbom_path, cachi2_sbom_path)
