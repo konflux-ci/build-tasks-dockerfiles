@@ -1,11 +1,12 @@
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from merge_cachi2_sboms import main, merge_by_apparent_sameness, merge_cyclonedx_sboms
+from merge_cachi2_sboms import SBOMItem, main, merge_by_apparent_sameness, merge_cyclonedx_sboms, wrap_as_cdx
 
 TOOLS_METADATA = {
     "syft-cyclonedx-1.4": {
@@ -37,8 +38,25 @@ def data_dir() -> Path:
     return Path(__file__).parent / "test_data"
 
 
-def get_purls(sbom: dict[str, Any]) -> set[str]:
-    return {component["purl"] for component in sbom["components"]}
+def count_components(sbom: dict[str, Any]) -> Counter[str]:
+    def key(component: SBOMItem) -> str:
+        purl = component.purl()
+        if purl:
+            return purl.to_string()
+        return f"{component.name()}@{component.version()}"
+
+    components = wrap_as_cdx(sbom["components"])
+    return Counter(map(key, components))
+
+
+def diff_counts(a: Counter[str], b: Counter[str]) -> dict[str, int]:
+    diffs: dict[str, int] = {}
+    for key, count_a in a.items():
+        count_b = b.get(key, 0)
+        diff = count_a - count_b
+        if diff != 0:
+            diffs[key] = diff
+    return diffs
 
 
 def run_main(args: list[str], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture) -> tuple[str, str]:
@@ -72,31 +90,31 @@ def test_merge_cachi2_and_syft_sbom(
     with open("cachi2.bom.json") as f:
         cachi2_sbom = json.load(f)
 
-    purls_taken_from_syft_sbom = get_purls(expected_sbom) - get_purls(cachi2_sbom)
-    assert purls_taken_from_syft_sbom == {
-        "pkg:golang/github.com/release-engineering/retrodep@v2.1.0#v2",
-        "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&upstream=basesystem-11-13.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&upstream=bash-5.1.8-9.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&upstream=coreutils-8.32-36.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&upstream=filesystem-3.16-5.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/glibc-common@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/glibc-minimal-langpack@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&upstream=glibc-2.34-125.el9_5.1.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/gpg-pubkey@5a6340b3-6229229e?distro=rhel-9.5",
-        "pkg:rpm/rhel/gpg-pubkey@fd431d51-4ae0493b?distro=rhel-9.5",
-        "pkg:rpm/rhel/libacl@2.3.1-4.el9?arch=x86_64&upstream=acl-2.3.1-4.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/libattr@2.5.1-3.el9?arch=x86_64&upstream=attr-2.5.1-3.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/libcap@2.48-9.el9_2?arch=x86_64&upstream=libcap-2.48-9.el9_2.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/libgcc@11.5.0-2.el9?arch=x86_64&upstream=gcc-11.5.0-2.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/libselinux@3.6-1.el9?arch=x86_64&upstream=libselinux-3.6-1.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/libsepol@3.6-1.el9?arch=x86_64&upstream=libsepol-3.6-1.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/ncurses-base@6.2-10.20210508.el9?arch=noarch&upstream=ncurses-6.2-10.20210508.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/ncurses-libs@6.2-10.20210508.el9?arch=x86_64&upstream=ncurses-6.2-10.20210508.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/pcre2-syntax@10.40-6.el9?arch=noarch&upstream=pcre2-10.40-6.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/pcre2@10.40-6.el9?arch=x86_64&upstream=pcre2-10.40-6.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/redhat-release@9.5-0.6.el9?arch=x86_64&upstream=redhat-release-9.5-0.6.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/setup@2.13.7-10.el9?arch=noarch&upstream=setup-2.13.7-10.el9.src.rpm&distro=rhel-9.5",
-        "pkg:rpm/rhel/tzdata@2024b-2.el9?arch=noarch&upstream=tzdata-2024b-2.el9.src.rpm&distro=rhel-9.5",
+    taken_from_syft = diff_counts(count_components(expected_sbom), count_components(cachi2_sbom))
+    assert taken_from_syft == {
+        "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&distro=rhel-9.5&upstream=basesystem-11-13.el9.src.rpm": 1,
+        "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&distro=rhel-9.5&upstream=bash-5.1.8-9.el9.src.rpm": 1,
+        "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&distro=rhel-9.5&upstream=coreutils-8.32-36.el9.src.rpm": 1,
+        "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&distro=rhel-9.5&upstream=filesystem-3.16-5.el9.src.rpm": 1,
+        "pkg:golang/github.com/release-engineering/retrodep@v2.1.0#v2": 1,
+        "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
+        "pkg:rpm/rhel/glibc-common@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
+        "pkg:rpm/rhel/glibc-minimal-langpack@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
+        "pkg:rpm/rhel/gpg-pubkey@5a6340b3-6229229e?distro=rhel-9.5": 1,
+        "pkg:rpm/rhel/gpg-pubkey@fd431d51-4ae0493b?distro=rhel-9.5": 1,
+        "pkg:rpm/rhel/libacl@2.3.1-4.el9?arch=x86_64&distro=rhel-9.5&upstream=acl-2.3.1-4.el9.src.rpm": 1,
+        "pkg:rpm/rhel/libattr@2.5.1-3.el9?arch=x86_64&distro=rhel-9.5&upstream=attr-2.5.1-3.el9.src.rpm": 1,
+        "pkg:rpm/rhel/libcap@2.48-9.el9_2?arch=x86_64&distro=rhel-9.5&upstream=libcap-2.48-9.el9_2.src.rpm": 1,
+        "pkg:rpm/rhel/libgcc@11.5.0-2.el9?arch=x86_64&distro=rhel-9.5&upstream=gcc-11.5.0-2.el9.src.rpm": 1,
+        "pkg:rpm/rhel/libselinux@3.6-1.el9?arch=x86_64&distro=rhel-9.5&upstream=libselinux-3.6-1.el9.src.rpm": 1,
+        "pkg:rpm/rhel/libsepol@3.6-1.el9?arch=x86_64&distro=rhel-9.5&upstream=libsepol-3.6-1.el9.src.rpm": 1,
+        "pkg:rpm/rhel/ncurses-base@6.2-10.20210508.el9?arch=noarch&distro=rhel-9.5&upstream=ncurses-6.2-10.20210508.el9.src.rpm": 1,
+        "pkg:rpm/rhel/ncurses-libs@6.2-10.20210508.el9?arch=x86_64&distro=rhel-9.5&upstream=ncurses-6.2-10.20210508.el9.src.rpm": 1,
+        "pkg:rpm/rhel/pcre2@10.40-6.el9?arch=x86_64&distro=rhel-9.5&upstream=pcre2-10.40-6.el9.src.rpm": 1,
+        "pkg:rpm/rhel/pcre2-syntax@10.40-6.el9?arch=noarch&distro=rhel-9.5&upstream=pcre2-10.40-6.el9.src.rpm": 1,
+        "pkg:rpm/rhel/redhat-release@9.5-0.6.el9?arch=x86_64&distro=rhel-9.5&upstream=redhat-release-9.5-0.6.el9.src.rpm": 1,
+        "pkg:rpm/rhel/setup@2.13.7-10.el9?arch=noarch&distro=rhel-9.5&upstream=setup-2.13.7-10.el9.src.rpm": 1,
+        "pkg:rpm/rhel/tzdata@2024b-2.el9?arch=noarch&distro=rhel-9.5&upstream=tzdata-2024b-2.el9.src.rpm": 1,
     }
 
 
