@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from merge_cachi2_sboms import SBOMItem, main, merge_by_apparent_sameness, merge_cyclonedx_sboms, wrap_as_cdx
+from merge_sboms import SBOMItem, main, merge_by_apparent_sameness, merge_cyclonedx_sboms, wrap_as_cdx
 
 TOOLS_METADATA = {
     "syft-cyclonedx-1.4": {
