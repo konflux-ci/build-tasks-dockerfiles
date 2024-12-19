@@ -31,6 +31,14 @@ TOOLS_METADATA = {
     },
 }
 
+# relative to data_dir
+INDIVIDUAL_SYFT_SBOMS = [
+    "syft-sboms/gomod-pandemonium.bom.json",
+    "syft-sboms/npm-cachi2-smoketest.bom.json",
+    "syft-sboms/pip-e2e-test.bom.json",
+    "syft-sboms/ubi-micro.bom.json",
+]
+
 
 @pytest.fixture
 def data_dir() -> Path:
@@ -63,6 +71,37 @@ def run_main(args: list[str], monkeypatch: pytest.MonkeyPatch, capsys: pytest.Ca
     monkeypatch.setattr(sys, "argv", ["unused_script_name", *args])
     main()
     return capsys.readouterr()
+
+
+def test_merge_n_syft_sboms(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    monkeypatch.chdir(data_dir)
+
+    args = [f"syft:{sbom_path}" for sbom_path in INDIVIDUAL_SYFT_SBOMS]
+    result, _ = run_main(args, monkeypatch, capsys)
+
+    with open("syft.merged-by-us.bom.json") as f:
+        merged_by_us = json.load(f)
+
+    assert json.loads(result) == merged_by_us
+
+    with open("syft.merged-by-syft.bom.json") as f:
+        merged_by_syft = json.load(f)
+
+    compared_to_syft = diff_counts(count_components(merged_by_us), count_components(merged_by_syft))
+    assert compared_to_syft == {
+        # All of these golang purls appear twice in the SBOM merged by syft
+        # (they already appear twice in the individual gomod SBOM).
+        # They only appear once in the SBOM merged by us, which seems better.
+        "pkg:golang/github.com/Azure/go-ansiterm@v0.0.0-20210617225240-d185dfc1b5a1": -1,
+        "pkg:golang/github.com/moby/term@v0.0.0-20221205130635-1aeaba878587": -1,
+        "pkg:golang/golang.org/x/sys@v0.6.0": -1,
+        # The rhel@9.5 component doesn't have a purl. Syft drops it when merging, we keep it.
+        "rhel@9.5": 1,
+    }
 
 
 @pytest.mark.parametrize(
