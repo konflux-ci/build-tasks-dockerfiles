@@ -2,6 +2,7 @@
 import itertools
 import json
 from argparse import ArgumentParser
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, Protocol, Sequence
@@ -286,14 +287,49 @@ def merge_cyclonedx_sboms(
     return json.dumps(sbom_a, indent=2)
 
 
-if __name__ == "__main__":
+def parse_sbom_arg(arg: str, default_flavour: str) -> tuple[str, str]:
+    before_colon, colon, after_colon = arg.partition(":")
+    if colon:
+        flavour = before_colon.lower()
+        path = after_colon
+    else:
+        path = before_colon
+        flavour = default_flavour
+
+    return flavour, path
+
+
+def main() -> None:
     parser = ArgumentParser()
-
-    parser.add_argument("cachi2_sbom_path")
-    parser.add_argument("syft_sbom_path")
-
+    parser.add_argument("sbom_a")
+    parser.add_argument("sbom_b")
     args = parser.parse_args()
 
-    merged_sbom = merge_cyclonedx_sboms(args.syft_sbom_path, args.cachi2_sbom_path, merge_by_prefering_cachi2)
+    # For backwards compatiblity, if the flavour is unspecified,
+    # the left SBOM defaults to cachi2 and the right one to syft.
+    sbom_a: tuple[str, str] = parse_sbom_arg(args.sbom_a, default_flavour="cachi2")
+    sbom_b: tuple[str, str] = parse_sbom_arg(args.sbom_b, default_flavour="syft")
 
-    print(merged_sbom)
+    sboms = [sbom_a, sbom_b]
+    sbom_paths_by_flavour: dict[str, list[str]] = defaultdict(list)
+    for flavour, path in sboms:
+        sbom_paths_by_flavour[flavour].append(path)
+
+    merged = None
+
+    match sbom_paths_by_flavour:
+        case {"cachi2": [cachi2_sbom_path], "syft": [syft_sbom_path], **extra} if not extra:
+            merged = merge_cyclonedx_sboms(syft_sbom_path, cachi2_sbom_path, merge_by_prefering_cachi2)
+        case _:
+            flavours = " X ".join(flavour for flavour, _ in sboms)
+            raise ValueError(
+                f"Unsupported combination of SBOM flavours: {flavours}\n"
+                "\n"
+                "This script only supports merging one cachi2 SBOM with one syft SBOM"
+            )
+
+    print(merged)
+
+
+if __name__ == "__main__":
+    main()
