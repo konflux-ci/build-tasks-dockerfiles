@@ -4868,8 +4868,8 @@
           "version": "1.4.1"
         },
         {
-          "author": "red hat",
           "name": "cachi2",
+          "author": "red hat",
           "type": "application"
         }
       ]

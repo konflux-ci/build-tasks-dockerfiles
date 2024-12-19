@@ -80,10 +80,21 @@ def test_merge_sboms(data_dir: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "syft_tools_metadata, expected_result",
+    "syft_tools_metadata, cachi2_tools_metadata, expected_result",
     [
         (
             [TOOLS_METADATA["syft-cyclonedx-1.4"]],
+            [TOOLS_METADATA["cachi2-cyclonedx-1.4"]],
+            [
+                TOOLS_METADATA["syft-cyclonedx-1.4"],
+                TOOLS_METADATA["cachi2-cyclonedx-1.4"],
+            ],
+        ),
+        (
+            [TOOLS_METADATA["syft-cyclonedx-1.4"]],
+            {
+                "components": [TOOLS_METADATA["cachi2-cyclonedx-1.5"]],
+            },
             [
                 TOOLS_METADATA["syft-cyclonedx-1.4"],
                 TOOLS_METADATA["cachi2-cyclonedx-1.4"],
@@ -94,6 +105,21 @@ def test_merge_sboms(data_dir: Path) -> None:
                 "components": [TOOLS_METADATA["syft-cyclonedx-1.5"]],
             },
             {
+                "components": [TOOLS_METADATA["cachi2-cyclonedx-1.5"]],
+            },
+            {
+                "components": [
+                    TOOLS_METADATA["syft-cyclonedx-1.5"],
+                    TOOLS_METADATA["cachi2-cyclonedx-1.5"],
+                ],
+            },
+        ),
+        (
+            {
+                "components": [TOOLS_METADATA["syft-cyclonedx-1.5"]],
+            },
+            [TOOLS_METADATA["cachi2-cyclonedx-1.4"]],
+            {
                 "components": [
                     TOOLS_METADATA["syft-cyclonedx-1.5"],
                     TOOLS_METADATA["cachi2-cyclonedx-1.5"],
@@ -102,7 +128,9 @@ def test_merge_sboms(data_dir: Path) -> None:
         ),
     ],
 )
-def test_merging_tools_metadata(syft_tools_metadata: str, expected_result: Any, tmpdir: Path) -> None:
+def test_merging_tools_metadata(
+    syft_tools_metadata: Any, cachi2_tools_metadata: Any, expected_result: Any, tmpdir: Path
+) -> None:
     syft_sbom = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
@@ -116,7 +144,7 @@ def test_merging_tools_metadata(syft_tools_metadata: str, expected_result: Any, 
         "bomFormat": "CycloneDX",
         "specVersion": "1.4",
         "metadata": {
-            "tools": [TOOLS_METADATA["cachi2-cyclonedx-1.4"]],
+            "tools": cachi2_tools_metadata,
         },
         "components": [],
     }
