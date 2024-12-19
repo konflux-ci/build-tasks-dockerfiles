@@ -39,10 +39,10 @@ jobs:
         cd ./sbom-utility-scripts/scripts/base-images-sbom-script/app/
         tox
 
-    - name: Run tox checks for merge-cachi2-sboms-script
+    - name: Run tox checks for merge-sboms-script
       run: |
         python3 -m pip install tox
-        cd ./sbom-utility-scripts/scripts/merge-cachi2-sboms-script/
+        cd ./sbom-utility-scripts/scripts/merge-sboms-script/
         tox
 
     - name: Run tox checks for index-image-sbom-script
