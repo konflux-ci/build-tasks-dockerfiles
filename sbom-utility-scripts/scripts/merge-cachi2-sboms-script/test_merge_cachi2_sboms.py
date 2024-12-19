@@ -68,9 +68,9 @@ def run_main(args: list[str], monkeypatch: pytest.MonkeyPatch, capsys: pytest.Ca
 @pytest.mark.parametrize(
     "args",
     [
-        ["cachi2.bom.json", "syft.bom.json"],
-        ["cachi2:cachi2.bom.json", "syft:syft.bom.json"],
-        ["syft:syft.bom.json", "cachi2:cachi2.bom.json"],
+        ["cachi2.bom.json", "syft.merged-by-syft.bom.json"],
+        ["cachi2:cachi2.bom.json", "syft:syft.merged-by-syft.bom.json"],
+        ["syft:syft.merged-by-syft.bom.json", "cachi2:cachi2.bom.json"],
     ],
 )
 def test_merge_cachi2_and_syft_sbom(

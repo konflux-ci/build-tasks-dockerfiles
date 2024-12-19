@@ -80,5 +80,14 @@ postprocess_syft_cyclonedx() {
 cachi2 merge-sboms "$temp_workdir/cachi2-sboms"/* |
     postprocess_cachi2_cyclonedx > "$testdata_dir/cachi2.bom.json"
 
+mkdir -p "$testdata_dir/syft-sboms"
+for syft_sbom in ./syft-sboms/*; do
+    name=$(basename "$syft_sbom")
+    postprocess_syft_cyclonedx < "$syft_sbom" > "$testdata_dir/syft-sboms/$name"
+done
+
 syft ./syft-sboms --select-catalogers=+sbom-cataloger -o cyclonedx-json@1.5 |
-    postprocess_syft_cyclonedx > "$testdata_dir/syft.bom.json"
+    postprocess_syft_cyclonedx > "$testdata_dir/syft.merged-by-syft.bom.json"
+
+printf "syft:%s\n" "$testdata_dir/syft-sboms"/* |
+    xargs python "$testdata_dir/../merge_cachi2_sboms.py" > "$testdata_dir/syft.merged-by-us.bom.json"
