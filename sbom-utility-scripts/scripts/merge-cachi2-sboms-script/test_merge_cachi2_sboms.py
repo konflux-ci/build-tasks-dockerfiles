@@ -107,9 +107,15 @@ def test_merge_n_syft_sboms(
 @pytest.mark.parametrize(
     "args",
     [
-        ["cachi2.bom.json", "syft.merged-by-syft.bom.json"],
-        ["cachi2:cachi2.bom.json", "syft:syft.merged-by-syft.bom.json"],
-        ["syft:syft.merged-by-syft.bom.json", "cachi2:cachi2.bom.json"],
+        ["cachi2.bom.json", "syft.merged-by-us.bom.json"],
+        ["cachi2:cachi2.bom.json", "syft:syft.merged-by-us.bom.json"],
+        ["syft:syft.merged-by-us.bom.json", "cachi2:cachi2.bom.json"],
+        [
+            "cachi2:cachi2.bom.json",
+            # merging these 4 should result in syft.merged-by-us.bom.json
+            # merging the result with the cachi2.bom.json should be the same as the cases above
+            *INDIVIDUAL_SYFT_SBOMS,
+        ],
     ],
 )
 def test_merge_cachi2_and_syft_sbom(
@@ -131,11 +137,11 @@ def test_merge_cachi2_and_syft_sbom(
 
     taken_from_syft = diff_counts(count_components(expected_sbom), count_components(cachi2_sbom))
     assert taken_from_syft == {
+        "pkg:golang/github.com/release-engineering/retrodep@v2.1.0#v2": 1,
         "pkg:rpm/rhel/basesystem@11-13.el9?arch=noarch&distro=rhel-9.5&upstream=basesystem-11-13.el9.src.rpm": 1,
         "pkg:rpm/rhel/bash@5.1.8-9.el9?arch=x86_64&distro=rhel-9.5&upstream=bash-5.1.8-9.el9.src.rpm": 1,
         "pkg:rpm/rhel/coreutils-single@8.32-36.el9?arch=x86_64&distro=rhel-9.5&upstream=coreutils-8.32-36.el9.src.rpm": 1,
         "pkg:rpm/rhel/filesystem@3.16-5.el9?arch=x86_64&distro=rhel-9.5&upstream=filesystem-3.16-5.el9.src.rpm": 1,
-        "pkg:golang/github.com/release-engineering/retrodep@v2.1.0#v2": 1,
         "pkg:rpm/rhel/glibc@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
         "pkg:rpm/rhel/glibc-common@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
         "pkg:rpm/rhel/glibc-minimal-langpack@2.34-125.el9_5.1?arch=x86_64&distro=rhel-9.5&upstream=glibc-2.34-125.el9_5.1.src.rpm": 1,
@@ -154,6 +160,7 @@ def test_merge_cachi2_and_syft_sbom(
         "pkg:rpm/rhel/redhat-release@9.5-0.6.el9?arch=x86_64&distro=rhel-9.5&upstream=redhat-release-9.5-0.6.el9.src.rpm": 1,
         "pkg:rpm/rhel/setup@2.13.7-10.el9?arch=noarch&distro=rhel-9.5&upstream=setup-2.13.7-10.el9.src.rpm": 1,
         "pkg:rpm/rhel/tzdata@2024b-2.el9?arch=noarch&distro=rhel-9.5&upstream=tzdata-2024b-2.el9.src.rpm": 1,
+        "rhel@9.5": 1,
     }
 
 
