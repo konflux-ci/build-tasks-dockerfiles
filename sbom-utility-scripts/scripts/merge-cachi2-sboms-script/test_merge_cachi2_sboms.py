@@ -1,10 +1,11 @@
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from merge_cachi2_sboms import merge_by_apparent_sameness, merge_cyclonedx_sboms, merge_by_prefering_cachi2
+from merge_cachi2_sboms import main, merge_by_apparent_sameness, merge_cyclonedx_sboms
 
 TOOLS_METADATA = {
     "syft-cyclonedx-1.4": {
@@ -40,17 +41,35 @@ def get_purls(sbom: dict[str, Any]) -> set[str]:
     return {component["purl"] for component in sbom["components"]}
 
 
-def test_merge_sboms(data_dir: Path) -> None:
-    result = merge_cyclonedx_sboms(
-        f"{data_dir}/syft.bom.json", f"{data_dir}/cachi2.bom.json", merge_by_prefering_cachi2
-    )
+def run_main(args: list[str], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture) -> tuple[str, str]:
+    monkeypatch.setattr(sys, "argv", ["unused_script_name", *args])
+    main()
+    return capsys.readouterr()
 
-    with open(f"{data_dir}/merged.bom.json") as file:
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["cachi2.bom.json", "syft.bom.json"],
+        ["cachi2:cachi2.bom.json", "syft:syft.bom.json"],
+        ["syft:syft.bom.json", "cachi2:cachi2.bom.json"],
+    ],
+)
+def test_merge_cachi2_and_syft_sbom(
+    args: list[str],
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture,
+) -> None:
+    monkeypatch.chdir(data_dir)
+    result, _ = run_main(args, monkeypatch, capsys)
+
+    with open("merged.bom.json") as file:
         expected_sbom = json.load(file)
 
     assert json.loads(result) == expected_sbom
 
-    with open(f"{data_dir}/cachi2.bom.json") as f:
+    with open("cachi2.bom.json") as f:
         cachi2_sbom = json.load(f)
 
     purls_taken_from_syft_sbom = get_purls(expected_sbom) - get_purls(cachi2_sbom)
@@ -79,6 +98,24 @@ def test_merge_sboms(data_dir: Path) -> None:
         "pkg:rpm/rhel/setup@2.13.7-10.el9?arch=noarch&upstream=setup-2.13.7-10.el9.src.rpm&distro=rhel-9.5",
         "pkg:rpm/rhel/tzdata@2024b-2.el9?arch=noarch&upstream=tzdata-2024b-2.el9.src.rpm&distro=rhel-9.5",
     }
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["foo:x.json", "bar:y.json"],
+        ["syft:x.json", "bar:y.json"],
+        ["syft:x.json", "syft:y.json"],
+        ["cachi2:x.json", "cachi2:y.json"],
+        # invalid because left defaults to cachi2
+        ["x.json", "cachi2:y.json"],
+    ],
+)
+def test_invalid_flavours_combination(
+    args: list[str], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
+    with pytest.raises(ValueError, match="Unsupported combination of SBOM flavours"):
+        run_main(args, monkeypatch, capsys)
 
 
 @pytest.mark.parametrize(
