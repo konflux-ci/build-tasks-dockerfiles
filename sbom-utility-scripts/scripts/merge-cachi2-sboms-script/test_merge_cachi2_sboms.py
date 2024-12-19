@@ -105,7 +105,6 @@ def test_merge_cachi2_and_syft_sbom(
     [
         ["foo:x.json", "bar:y.json"],
         ["syft:x.json", "bar:y.json"],
-        ["syft:x.json", "syft:y.json"],
         ["cachi2:x.json", "cachi2:y.json"],
         # invalid because left defaults to cachi2
         ["x.json", "cachi2:y.json"],
@@ -167,9 +166,7 @@ def test_invalid_flavours_combination(
         ),
     ],
 )
-def test_merging_tools_metadata(
-    syft_tools_metadata: Any, cachi2_tools_metadata: Any, expected_result: Any, tmpdir: Path
-) -> None:
+def test_merging_tools_metadata(syft_tools_metadata: Any, cachi2_tools_metadata: Any, expected_result: Any) -> None:
     syft_sbom = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
@@ -188,21 +185,12 @@ def test_merging_tools_metadata(
         "components": [],
     }
 
-    syft_sbom_path = f"{tmpdir}/syft.bom.json"
-    cachi2_sbom_path = f"{tmpdir}/cachi2.bom.json"
+    result = merge_cyclonedx_sboms(syft_sbom, cachi2_sbom, merge_by_apparent_sameness)
 
-    with open(syft_sbom_path, "w") as file:
-        json.dump(syft_sbom, file)
-
-    with open(cachi2_sbom_path, "w") as file:
-        json.dump(cachi2_sbom, file)
-
-    result = merge_cyclonedx_sboms(syft_sbom_path, cachi2_sbom_path, merge_by_apparent_sameness)
-
-    assert json.loads(result)["metadata"]["tools"] == expected_result
+    assert result["metadata"]["tools"] == expected_result
 
 
-def test_invalid_tools_format(tmpdir: Path) -> None:
+def test_invalid_tools_format() -> None:
     syft_sbom = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
@@ -221,14 +209,5 @@ def test_invalid_tools_format(tmpdir: Path) -> None:
         "components": [],
     }
 
-    syft_sbom_path = f"{tmpdir}/syft.bom.json"
-    cachi2_sbom_path = f"{tmpdir}/cachi2.bom.json"
-
-    with open(syft_sbom_path, "w") as file:
-        json.dump(syft_sbom, file)
-
-    with open(cachi2_sbom_path, "w") as file:
-        json.dump(cachi2_sbom, file)
-
     with pytest.raises(RuntimeError):
-        merge_cyclonedx_sboms(syft_sbom_path, cachi2_sbom_path, merge_by_apparent_sameness)
+        merge_cyclonedx_sboms(syft_sbom, cachi2_sbom, merge_by_apparent_sameness)
