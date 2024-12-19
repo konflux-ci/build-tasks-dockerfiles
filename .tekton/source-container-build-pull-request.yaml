@@ -7,7 +7,11 @@ metadata:
     build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "main" && ( "source-container-build/***".pathChanged() || ".tekton/source-container-build-pull-request.yaml".pathChanged() )
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "main" &&
+      ( "source-container-build/***".pathChanged() ||
+      ".tekton/source-container-build-pull-request.yaml".pathChanged() ||
+      "integration-tests/***".pathChanged()
+      )
   creationTimestamp:
   labels:
     appstudio.openshift.io/application: build-tasks-dockerfiles
