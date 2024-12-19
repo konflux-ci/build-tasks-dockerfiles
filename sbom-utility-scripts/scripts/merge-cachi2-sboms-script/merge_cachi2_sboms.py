@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import functools
 import itertools
 import json
 from argparse import ArgumentParser
@@ -266,17 +267,11 @@ def _dedupe[T](items: Iterable[T], by_key: Callable[[T], Any]) -> list[T]:
 
 
 def merge_cyclonedx_sboms(
-    sbom_a_path: str,
-    sbom_b_path: str,
+    sbom_a: dict[str, Any],
+    sbom_b: dict[str, Any],
     merge_components: MergeComponentsFunc[CDXComponent],
-) -> str:
+) -> dict[str, Any]:
     """Merge two CycloneDX SBOMs."""
-    with open(sbom_a_path) as file:
-        sbom_a = json.load(file)
-
-    with open(sbom_b_path) as file:
-        sbom_b = json.load(file)
-
     components_a = wrap_as_cdx(sbom_a.get("components", []))
     components_b = wrap_as_cdx(sbom_b.get("components", []))
     merged = merge_components(components_a, components_b)
@@ -284,7 +279,27 @@ def merge_cyclonedx_sboms(
     sbom_a["components"] = unwrap_from_cdx(merged)
     _merge_tools_metadata(sbom_a, sbom_b)
 
-    return json.dumps(sbom_a, indent=2)
+    return sbom_a
+
+
+def merge_syft_and_cachi2_sboms(syft_sbom_paths: list[str], cachi2_sbom_path: str) -> dict[str, Any]:
+    syft_sbom = merge_n_syft_sboms(syft_sbom_paths)
+
+    with open(cachi2_sbom_path) as file:
+        cachi2_sbom = json.load(file)
+
+    return merge_cyclonedx_sboms(syft_sbom, cachi2_sbom, merge_by_prefering_cachi2)
+
+
+def merge_n_syft_sboms(syft_sbom_paths: list[str]) -> dict[str, Any]:
+    sboms = []
+    for path in syft_sbom_paths:
+        with open(path) as f:
+            sboms.append(json.load(f))
+
+    merge = functools.partial(merge_cyclonedx_sboms, merge_components=merge_by_apparent_sameness)
+    merged_sbom = functools.reduce(merge, sboms)
+    return merged_sbom
 
 
 def parse_sbom_arg(arg: str, default_flavour: str) -> tuple[str, str]:
@@ -302,15 +317,15 @@ def parse_sbom_arg(arg: str, default_flavour: str) -> tuple[str, str]:
 def main() -> None:
     parser = ArgumentParser()
     parser.add_argument("sbom_a")
-    parser.add_argument("sbom_b")
+    parser.add_argument("more_sboms", nargs="+")
     args = parser.parse_args()
 
     # For backwards compatiblity, if the flavour is unspecified,
-    # the left SBOM defaults to cachi2 and the right one to syft.
+    # the left SBOM defaults to cachi2 and the right one(s) to syft.
     sbom_a: tuple[str, str] = parse_sbom_arg(args.sbom_a, default_flavour="cachi2")
-    sbom_b: tuple[str, str] = parse_sbom_arg(args.sbom_b, default_flavour="syft")
+    more_sboms: list[tuple[str, str]] = [parse_sbom_arg(arg, default_flavour="syft") for arg in args.more_sboms]
 
-    sboms = [sbom_a, sbom_b]
+    sboms = [sbom_a, *more_sboms]
     sbom_paths_by_flavour: dict[str, list[str]] = defaultdict(list)
     for flavour, path in sboms:
         sbom_paths_by_flavour[flavour].append(path)
@@ -318,17 +333,19 @@ def main() -> None:
     merged = None
 
     match sbom_paths_by_flavour:
-        case {"cachi2": [cachi2_sbom_path], "syft": [syft_sbom_path], **extra} if not extra:
-            merged = merge_cyclonedx_sboms(syft_sbom_path, cachi2_sbom_path, merge_by_prefering_cachi2)
+        case {"cachi2": [cachi2_sbom_path], "syft": syft_sbom_paths, **extra} if not extra:
+            merged = merge_syft_and_cachi2_sboms(syft_sbom_paths, cachi2_sbom_path)
+        case {"syft": syft_sbom_paths, **extra} if not extra:
+            merged = merge_n_syft_sboms(syft_sbom_paths)
         case _:
             flavours = " X ".join(flavour for flavour, _ in sboms)
             raise ValueError(
                 f"Unsupported combination of SBOM flavours: {flavours}\n"
                 "\n"
-                "This script only supports merging one cachi2 SBOM with one syft SBOM"
+                "This script supports merging 0 or 1 cachi2 SBOM with >=1 syft SBOMs"
             )
 
-    print(merged)
+    print(json.dumps(merged, indent=2))
 
 
 if __name__ == "__main__":
