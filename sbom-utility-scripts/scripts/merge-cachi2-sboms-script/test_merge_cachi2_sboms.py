@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from merge_cachi2_sboms import merge_sboms
+from merge_cachi2_sboms import merge_by_apparent_sameness, merge_cyclonedx_sboms, merge_by_prefering_cachi2
 
 TOOLS_METADATA = {
     "syft-cyclonedx-1.4": {
@@ -41,7 +41,9 @@ def get_purls(sbom: dict[str, Any]) -> set[str]:
 
 
 def test_merge_sboms(data_dir: Path) -> None:
-    result = merge_sboms(f"{data_dir}/syft.bom.json", f"{data_dir}/cachi2.bom.json")
+    result = merge_cyclonedx_sboms(
+        f"{data_dir}/syft.bom.json", f"{data_dir}/cachi2.bom.json", merge_by_prefering_cachi2
+    )
 
     with open(f"{data_dir}/merged.bom.json") as file:
         expected_sbom = json.load(file)
@@ -158,7 +160,7 @@ def test_merging_tools_metadata(
     with open(cachi2_sbom_path, "w") as file:
         json.dump(cachi2_sbom, file)
 
-    result = merge_sboms(syft_sbom_path, cachi2_sbom_path)
+    result = merge_cyclonedx_sboms(syft_sbom_path, cachi2_sbom_path, merge_by_apparent_sameness)
 
     assert json.loads(result)["metadata"]["tools"] == expected_result
 
@@ -192,4 +194,4 @@ def test_invalid_tools_format(tmpdir: Path) -> None:
         json.dump(cachi2_sbom, file)
 
     with pytest.raises(RuntimeError):
-        merge_sboms(syft_sbom_path, cachi2_sbom_path)
+        merge_cyclonedx_sboms(syft_sbom_path, cachi2_sbom_path, merge_by_apparent_sameness)
