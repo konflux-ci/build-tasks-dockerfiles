@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
+import functools
+import itertools
 import json
 from argparse import ArgumentParser
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Protocol, Sequence
+from typing import Any, Callable, Iterable, Protocol, Sequence
 from urllib.parse import quote_plus
 
 from packageurl import PackageURL
@@ -38,7 +41,7 @@ class CDXComponent:
         return None
 
 
-def wrap_as_cdx(items: list[dict[str, Any]]) -> list[CDXComponent]:
+def wrap_as_cdx(items: Iterable[dict[str, Any]]) -> list[CDXComponent]:
     return list(map(CDXComponent, items))
 
 
@@ -184,74 +187,166 @@ def _get_syft_component_filter(cachi_sbom_components: Sequence[SBOMItem]) -> Cal
     return component_is_duplicated
 
 
-def _merge_tools_metadata(syft_sbom: dict[Any, Any], cachi2_sbom: dict[Any, Any]) -> None:
-    """Merge the content of tools in the metadata section of the SBOM.
+def _merge_tools_metadata(sbom_a: dict[Any, Any], sbom_b: dict[Any, Any]) -> None:
+    """Merge the .metadata.tools of the right SBOM into the left SBOM.
 
-    With CycloneDX 1.5, a new format for specifying tools was introduced, and the format from 1.4
-    was marked as deprecated.
-
-    This function aims to support both formats in the Syft SBOM. We're assuming the Cachi2 SBOM
-    was generated with the same version as this script, and it will be in the older format.
+    Handle both the 1.4 style and the 1.5 style of .metadata.tools.
+    If the SBOMs don't use the same style, conform to the left SBOM.
     """
-    syft_tools = syft_sbom["metadata"]["tools"]
-    cachi2_tools = cachi2_sbom["metadata"]["tools"]
+    # https://cyclonedx.org/docs/1.4/json/#metadata_tools
+    # vs.
+    # https://cyclonedx.org/docs/1.5/json/#metadata_tools
+    shared_keys = ["name", "version", "hashes", "externalReferences"]
 
-    if isinstance(syft_tools, dict):
-        components = []
+    def tool_to_component(tool: dict[str, Any]) -> dict[str, Any]:
+        component = {key: tool[key] for key in shared_keys if key in tool}
+        if vendor := tool.get("vendor"):
+            component["author"] = vendor
+        component["type"] = "application"
+        return component
 
-        for t in cachi2_tools:
-            components.append(
-                {
-                    "author": t["vendor"],
-                    "name": t["name"],
-                    "type": "application",
-                }
-            )
+    def component_to_tool(component: dict[str, Any]) -> dict[str, Any]:
+        tool = {key: component[key] for key in shared_keys if key in component}
+        if author := component.get("author"):
+            tool["vendor"] = author
+        return tool
 
-        syft_tools["components"].extend(components)
-    elif isinstance(syft_tools, list):
-        syft_tools.extend(cachi2_tools)
+    tools_a = sbom_a["metadata"]["tools"]
+    tools_b = sbom_b["metadata"]["tools"]
+
+    if isinstance(tools_a, dict):
+        components_a = tools_a["components"]
+        if isinstance(tools_b, dict):
+            components_b = tools_b["components"]
+        else:
+            components_b = map(tool_to_component, tools_b)
+
+        merged_components = merge_by_apparent_sameness(wrap_as_cdx(components_a), wrap_as_cdx(components_b))
+        sbom_a["metadata"]["tools"]["components"] = unwrap_from_cdx(merged_components)
+    elif isinstance(tools_a, list):
+        if isinstance(tools_b, dict):
+            tools_b = map(component_to_tool, tools_b["components"])
+
+        sbom_a["metadata"]["tools"] = _merge(tools_a, tools_b, lambda t: (t["name"], t.get("version")))
     else:
         raise RuntimeError(
-            "The .metadata.tools JSON key is in an unexpected format. "
-            f"Expected dict or list, got {type(syft_tools)}."
+            f"The .metadata.tools JSON key is in an unexpected format. Expected dict or list, got {type(tools_a)}."
         )
 
 
-def merge_components[T: SBOMItem](cachi2_components: Sequence[T], syft_components: Sequence[T]) -> list[T]:
+type MergeComponentsFunc[T: SBOMItem] = Callable[[Sequence[T], Sequence[T]], list[T]]
+
+
+def merge_by_prefering_cachi2[T: SBOMItem](syft_components: Sequence[T], cachi2_components: Sequence[T]) -> list[T]:
     is_duplicate_component = _get_syft_component_filter(cachi2_components)
     merged = [c for c in syft_components if not is_duplicate_component(c)]
     merged += cachi2_components
     return merged
 
 
-def merge_sboms(cachi2_sbom_path: str, syft_sbom_path: str) -> str:
-    """Merge Cachi2 components into the Syft SBOM while removing duplicates."""
+def merge_by_apparent_sameness[T: SBOMItem](components_a: Sequence[T], components_b: Sequence[T]) -> list[T]:
+    def key(component: SBOMItem) -> str:
+        purl = component.purl()
+        if purl:
+            return purl.to_string()
+        return f"{component.name()}@{component.version()}"
+
+    return _merge(components_a, components_b, key)
+
+
+def _merge[T](items_a: Iterable[T], items_b: Iterable[T], by_key: Callable[[T], Any]) -> list[T]:
+    return _dedupe(itertools.chain(items_a, items_b), by_key)
+
+
+def _dedupe[T](items: Iterable[T], by_key: Callable[[T], Any]) -> list[T]:
+    item_by_key: dict[Any, T] = {}
+    for item in items:
+        item_by_key.setdefault(by_key(item), item)
+
+    return list(item_by_key.values())
+
+
+def merge_cyclonedx_sboms(
+    sbom_a: dict[str, Any],
+    sbom_b: dict[str, Any],
+    merge_components: MergeComponentsFunc[CDXComponent],
+) -> dict[str, Any]:
+    """Merge two CycloneDX SBOMs."""
+    components_a = wrap_as_cdx(sbom_a.get("components", []))
+    components_b = wrap_as_cdx(sbom_b.get("components", []))
+    merged = merge_components(components_a, components_b)
+
+    sbom_a["components"] = unwrap_from_cdx(merged)
+    _merge_tools_metadata(sbom_a, sbom_b)
+
+    return sbom_a
+
+
+def merge_syft_and_cachi2_sboms(syft_sbom_paths: list[str], cachi2_sbom_path: str) -> dict[str, Any]:
+    syft_sbom = merge_n_syft_sboms(syft_sbom_paths)
+
     with open(cachi2_sbom_path) as file:
         cachi2_sbom = json.load(file)
 
-    with open(syft_sbom_path) as file:
-        syft_sbom = json.load(file)
+    return merge_cyclonedx_sboms(syft_sbom, cachi2_sbom, merge_by_prefering_cachi2)
 
-    cachi2_components = wrap_as_cdx(cachi2_sbom["components"])
-    syft_components = wrap_as_cdx(syft_sbom.get("components", []))
-    merged = merge_components(cachi2_components, syft_components)
 
-    syft_sbom["components"] = unwrap_from_cdx(merged)
+def merge_n_syft_sboms(syft_sbom_paths: list[str]) -> dict[str, Any]:
+    sboms = []
+    for path in syft_sbom_paths:
+        with open(path) as f:
+            sboms.append(json.load(f))
 
-    _merge_tools_metadata(syft_sbom, cachi2_sbom)
+    merge = functools.partial(merge_cyclonedx_sboms, merge_components=merge_by_apparent_sameness)
+    merged_sbom = functools.reduce(merge, sboms)
+    return merged_sbom
 
-    return json.dumps(syft_sbom, indent=2)
+
+def parse_sbom_arg(arg: str, default_flavour: str) -> tuple[str, str]:
+    before_colon, colon, after_colon = arg.partition(":")
+    if colon:
+        flavour = before_colon.lower()
+        path = after_colon
+    else:
+        path = before_colon
+        flavour = default_flavour
+
+    return flavour, path
+
+
+def main() -> None:
+    parser = ArgumentParser()
+    parser.add_argument("sbom_a")
+    parser.add_argument("more_sboms", nargs="+")
+    args = parser.parse_args()
+
+    # For backwards compatiblity, if the flavour is unspecified,
+    # the left SBOM defaults to cachi2 and the right one(s) to syft.
+    sbom_a: tuple[str, str] = parse_sbom_arg(args.sbom_a, default_flavour="cachi2")
+    more_sboms: list[tuple[str, str]] = [parse_sbom_arg(arg, default_flavour="syft") for arg in args.more_sboms]
+
+    sboms = [sbom_a, *more_sboms]
+    sbom_paths_by_flavour: dict[str, list[str]] = defaultdict(list)
+    for flavour, path in sboms:
+        sbom_paths_by_flavour[flavour].append(path)
+
+    merged = None
+
+    match sbom_paths_by_flavour:
+        case {"cachi2": [cachi2_sbom_path], "syft": syft_sbom_paths, **extra} if not extra:
+            merged = merge_syft_and_cachi2_sboms(syft_sbom_paths, cachi2_sbom_path)
+        case {"syft": syft_sbom_paths, **extra} if not extra:
+            merged = merge_n_syft_sboms(syft_sbom_paths)
+        case _:
+            flavours = " X ".join(flavour for flavour, _ in sboms)
+            raise ValueError(
+                f"Unsupported combination of SBOM flavours: {flavours}\n"
+                "\n"
+                "This script supports merging 0 or 1 cachi2 SBOM with >=1 syft SBOMs"
+            )
+
+    print(json.dumps(merged, indent=2))
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-
-    parser.add_argument("cachi2_sbom_path")
-    parser.add_argument("syft_sbom_path")
-
-    args = parser.parse_args()
-
-    merged_sbom = merge_sboms(args.cachi2_sbom_path, args.syft_sbom_path)
-
-    print(merged_sbom)
+    main()
