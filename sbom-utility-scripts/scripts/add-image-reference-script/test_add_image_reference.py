@@ -125,12 +125,16 @@ def test_redirect_current_roots_to_new_root() -> None:
     sbom = {
         "packages": [
             {"SPDXID": "virtual", "name": ""},
+            {"SPDXID": "virtual2", "name": ""},
             {"SPDXID": "bar", "name": "bar"},
             {"SPDXID": "baz", "name": "baz"},
+            {"SPDXID": "spam", "name": "spam"},
         ],
         "relationships": [
             {"spdxElementId": "foo", "relationshipType": "DESCRIBES", "relatedSpdxElement": "virtual"},
+            {"spdxElementId": "foo", "relationshipType": "DESCRIBES", "relatedSpdxElement": "virtual2"},
             {"spdxElementId": "virtual", "relationshipType": "CONTAINS", "relatedSpdxElement": "baz"},
+            {"spdxElementId": "virtual2", "relationshipType": "CONTAINS", "relatedSpdxElement": "spam"},
         ],
         "SPDXID": "foo",
     }
@@ -140,9 +144,11 @@ def test_redirect_current_roots_to_new_root() -> None:
         "packages": [
             {"SPDXID": "bar", "name": "bar"},
             {"SPDXID": "baz", "name": "baz"},
+            {"SPDXID": "spam", "name": "spam"},
         ],
         "relationships": [
             {"spdxElementId": "bar", "relationshipType": "CONTAINS", "relatedSpdxElement": "baz"},
+            {"spdxElementId": "bar", "relationshipType": "CONTAINS", "relatedSpdxElement": "spam"},
         ],
         "SPDXID": "foo",
     }
@@ -153,10 +159,14 @@ def test_redirect_current_roots_to_new_root() -> None:
             {"SPDXID": "npm", "name": "npm"},
             {"SPDXID": "bar", "name": "bar"},
             {"SPDXID": "baz", "name": "baz"},
+            {"SPDXID": "pip", "name": "pip"},
+            {"SPDXID": "spam", "name": "spam"},
         ],
         "relationships": [
             {"spdxElementId": "foo", "relationshipType": "DESCRIBES", "relatedSpdxElement": "npm"},
+            {"spdxElementId": "foo", "relationshipType": "DESCRIBES", "relatedSpdxElement": "pip"},
             {"spdxElementId": "npm", "relationshipType": "CONTAINS", "relatedSpdxElement": "baz"},
+            {"spdxElementId": "pip", "relationshipType": "CONTAINS", "relatedSpdxElement": "spam"},
         ],
         "SPDXID": "foo",
     }
@@ -167,10 +177,14 @@ def test_redirect_current_roots_to_new_root() -> None:
             {"SPDXID": "npm", "name": "npm"},
             {"SPDXID": "bar", "name": "bar"},
             {"SPDXID": "baz", "name": "baz"},
+            {"SPDXID": "pip", "name": "pip"},
+            {"SPDXID": "spam", "name": "spam"},
         ],
         "relationships": [
             {"spdxElementId": "bar", "relationshipType": "CONTAINS", "relatedSpdxElement": "npm"},
+            {"spdxElementId": "bar", "relationshipType": "CONTAINS", "relatedSpdxElement": "pip"},
             {"spdxElementId": "npm", "relationshipType": "CONTAINS", "relatedSpdxElement": "baz"},
+            {"spdxElementId": "pip", "relationshipType": "CONTAINS", "relatedSpdxElement": "spam"},
         ],
         "SPDXID": "foo",
     }

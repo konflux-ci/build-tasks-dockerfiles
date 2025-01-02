@@ -265,7 +265,7 @@ def redirect_current_roots_to_new_root(sbom: dict, new_root: str) -> dict:
     Returns:
         dict: Updated SBOM with the new root node identifier.
     """
-    for relationship in sbom["relationships"]:
+    for relationship in sbom["relationships"].copy():
         if not describes_the_document(relationship, sbom["SPDXID"]):
             continue
 
