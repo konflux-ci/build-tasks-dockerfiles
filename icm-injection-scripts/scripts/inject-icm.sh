@@ -17,6 +17,12 @@ set -euo pipefail
 IMAGE="${1}"
 SQUASH="${SQUASH:-false}"
 
+set +u
+if [ "${IMAGE_APPEND_PLATFORM}" == "true" ]; then
+  IMAGE="${IMAGE}-${PLATFORM//[^a-zA-Z0-9]/-}"
+fi
+set -u
+
 icm_filename="content-sets.json"
 location="/root/buildinfo/content_manifests/${icm_filename}"
 
