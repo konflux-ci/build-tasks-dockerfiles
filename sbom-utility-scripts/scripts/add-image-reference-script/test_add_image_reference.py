@@ -115,8 +115,10 @@ def test_is_virtual_root() -> None:
 
     assert add_image_reference.is_virtual_root(package) is True
 
-    package["name"] = "bar"
+    package["name"] = "./some-dir"
+    assert add_image_reference.is_virtual_root(package) is True
 
+    package["name"] = "bar"
     assert add_image_reference.is_virtual_root(package) is False
 
 
@@ -125,7 +127,7 @@ def test_redirect_current_roots_to_new_root() -> None:
     sbom = {
         "packages": [
             {"SPDXID": "virtual", "name": ""},
-            {"SPDXID": "virtual2", "name": ""},
+            {"SPDXID": "virtual2", "name": "./some-dir"},
             {"SPDXID": "bar", "name": "bar"},
             {"SPDXID": "baz", "name": "baz"},
             {"SPDXID": "spam", "name": "spam"},

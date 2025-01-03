@@ -243,7 +243,21 @@ def describes_the_document(relationship_element: dict, doc_spdx_id: str) -> bool
 
 def is_virtual_root(package: dict) -> bool:
     """
-    Check if the package is a virtual - usually a package with empty values.
+    Check if the package is a virtual root - usually a package with empty values.
+
+    For example:
+
+        {
+            "SPDXID": "SPDXRef-DocumentRoot-Unknown",
+            "name": "",
+            "versionInfo": ""
+        }
+
+        {
+            "SPDXID": "SPDXRef-DocumentRoot-Directory-.-some-directory",
+            "name": "./some-directory",
+            "versionInfo": ""
+        }
 
     Args:
         package (dict): A package element from the SBOM.
@@ -251,7 +265,8 @@ def is_virtual_root(package: dict) -> bool:
     Returns:
         bool: A boolean indicating if the package is a virtual root.
     """
-    return not package.get("name")
+    name = package.get("name")
+    return not name or name.startswith(".")
 
 
 def redirect_current_roots_to_new_root(sbom: dict, new_root: str) -> dict:
