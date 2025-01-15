@@ -266,7 +266,7 @@ def is_virtual_root(package: dict) -> bool:
         bool: A boolean indicating if the package is a virtual root.
     """
     name = package.get("name")
-    return not name or name.startswith(".")
+    return not name or name.startswith((".", "/"))
 
 
 def redirect_current_roots_to_new_root(sbom: dict, new_root: str) -> dict:

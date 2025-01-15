@@ -31,6 +31,7 @@ base_image_digest=$(buildah inspect --format '{{ index .ImageAnnotations "org.op
 
 echo "Creating container from $IMAGE"
 CONTAINER=$(buildah from --pull-never $IMAGE)
+trap 'buildah rm "$CONTAINER"' EXIT
 
 echo "Preparing construction of $location for container $CONTAINER to be committed back as $IMAGE (squash: $SQUASH)"
 cat >content-sets.json <<EOF
@@ -52,7 +53,16 @@ do
     jq --arg content_set "$content_set" '.content_sets += [$content_set]' content-sets.json > content-sets.json.tmp
     mv content-sets.json.tmp content-sets.json
   fi
-done <<< "$(jq -r '.components[].purl' sbom-cachi2.json | grep -o -P '(?<=repository_id=).*(?=(&|$))' | sort -u)"
+done <<< "$(
+    jq -r '
+        if .bomFormat == "CycloneDX" then
+            .components[].purl
+        else
+            .packages[].externalRefs[]? | select(.referenceType == "purl") | .referenceLocator
+        end' sbom-cachi2.json |
+    grep -o -P '(?<=repository_id=).*(?=(&|$))' |
+    sort -u
+)"
 
 echo "Constructed the following:"
 cat content-sets.json

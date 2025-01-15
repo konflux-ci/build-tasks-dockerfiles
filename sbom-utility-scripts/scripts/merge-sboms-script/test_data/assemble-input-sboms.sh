@@ -2,8 +2,8 @@
 set -o errexit -o nounset -o pipefail -o xtrace
 
 # This script was used to generate the input SBOMs in this directory:
-# - cachi2.bom.json
-# - syft.bom.json
+# - cyclonedx/**
+# - spdx/**
 #
 # Hopefully you won't need to run this script again, but if you do, you need:
 # - cachi2 (https://github.com/containerbuildsystem/cachi2/blob/main/CONTRIBUTING.md#virtual-environment)
@@ -15,11 +15,26 @@ set -o errexit -o nounset -o pipefail -o xtrace
 # merged syft SBOM. You can then test the merge_sboms.py script by merging
 # the cachi2 SBOM with the syft SBOM.
 
+sbom_type=${1:-cyclonedx}
+
+case $sbom_type in
+    cyclonedx)
+        syft_sbom_type=cyclonedx-json@1.5
+        ;;
+    spdx)
+        syft_sbom_type=spdx-json@2.3
+        ;;
+    *)
+        echo "unknown SBOM type: $sbom_type" >&2
+        exit 1
+        ;;
+esac
+
 testdata_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
 # This can't actually be in /tmp! Until v1.6.0, syft had a bug where directory scanning
 # didn't work at all if the directory was in /tmp
-temp_workdir=$(realpath ./assemble-sboms)
+temp_workdir=$PWD/assemble-sboms-$sbom_type
 mkdir -p "$temp_workdir"
 trap 'rm -rf "$temp_workdir"' EXIT
 
@@ -31,9 +46,9 @@ git clone https://github.com/cachito-testing/gomod-pandemonium
 (
     cd gomod-pandemonium
 
-    syft dir:. -o cyclonedx-json@1.5 > "$temp_workdir/syft-sboms/gomod-pandemonium.bom.json"
+    syft dir:. -o "$syft_sbom_type" > "$temp_workdir/syft-sboms/gomod-pandemonium.bom.json"
 
-    cachi2 fetch-deps '[
+    cachi2 fetch-deps --sbom-output-type "$sbom_type" '[
         {"type": "gomod"},
         {"type": "gomod", "path": "terminaltor"},
         {"type": "gomod", "path": "weird"}
@@ -45,9 +60,9 @@ git clone https://github.com/cachito-testing/pip-e2e-test
 (
     cd pip-e2e-test
 
-    syft dir:. -o cyclonedx-json@1.5 > "$temp_workdir/syft-sboms/pip-e2e-test.bom.json"
+    syft dir:. -o "$syft_sbom_type" > "$temp_workdir/syft-sboms/pip-e2e-test.bom.json"
 
-    cachi2 fetch-deps pip
+    cachi2 fetch-deps --sbom-output-type "$sbom_type" pip
     cp cachi2-output/bom.json "$temp_workdir/cachi2-sboms/pip-e2e-test.bom.json"
 )
 
@@ -55,39 +70,58 @@ git clone https://github.com/cachito-testing/npm-cachi2-smoketest --branch lockf
 (
     cd npm-cachi2-smoketest
 
-    syft dir:. -o cyclonedx-json@1.5 > "$temp_workdir/syft-sboms/npm-cachi2-smoketest.bom.json"
+    syft dir:. -o "$syft_sbom_type" > "$temp_workdir/syft-sboms/npm-cachi2-smoketest.bom.json"
 
-    cachi2 fetch-deps npm
+    cachi2 fetch-deps --sbom-output-type "$sbom_type" npm
     cp cachi2-output/bom.json "$temp_workdir/cachi2-sboms/npm-cachi2-smoketest.bom.json"
 )
 
 ubi_micro=registry.access.redhat.com/ubi9/ubi-micro:9.5@sha256:a22fffe0256af00176c8b4f22eec5d8ecb1cb1684d811c33b1f2832fd573260f
-syft image:"$ubi_micro" -o cyclonedx-json@1.5 > "$temp_workdir/syft-sboms/ubi-micro.bom.json"
+syft image:"$ubi_micro" -o "$syft_sbom_type" > "$temp_workdir/syft-sboms/ubi-micro.bom.json"
+
+# postprocess_*: Some attributes change every time, e.g. timestamps or UUIDs.
+# Set them to hardcoded values to avoid unnecessary changes when re-running this script.
 
 postprocess_cachi2_cyclonedx() {
     jq --sort-keys
 }
 
+postprocess_cachi2_spdx() {
+    jq --sort-keys '
+        .creationInfo.created = "2024-12-18T11:27:10Z" |
+        .packages[].annotations[].annotationDate = "2024-12-18T11:27:10Z" |
+        (.relationships |= sort)
+    '
+    # TODO remove the relationships sorting if cachi2 fixes the random order
+}
+
 postprocess_syft_cyclonedx() {
-    # These change every time. Set them to a hardcoded value to avoid unnecessary changes
-    # when re-running this script.
     jq --sort-keys '
         .metadata.timestamp = "2024-12-18T11:08:00+01:00" |
         .serialNumber = "urn:uuid:1d823647-6b64-41b3-a29b-1d09cfb3ba8a"
     '
 }
 
-cachi2 merge-sboms "$temp_workdir/cachi2-sboms"/* |
-    postprocess_cachi2_cyclonedx > "$testdata_dir/cachi2.bom.json"
+postprocess_syft_spdx() {
+    jq --sort-keys '
+        .creationInfo.created = "2024-12-18T11:28:00Z" |
+        .documentNamespace = "https://anchore.com/syft/dir/syft-sboms-b66779b6-6e20-4128-9fad-da28250a1b82"
+    '
+}
 
-mkdir -p "$testdata_dir/syft-sboms"
+mkdir -p "$testdata_dir/$sbom_type"
+
+cachi2 merge-sboms --sbom-output-type "$sbom_type" "$temp_workdir/cachi2-sboms"/* |
+    postprocess_cachi2_"$sbom_type" > "$testdata_dir/$sbom_type/cachi2.bom.json"
+
+mkdir -p "$testdata_dir/$sbom_type/syft-sboms"
 for syft_sbom in ./syft-sboms/*; do
     name=$(basename "$syft_sbom")
-    postprocess_syft_cyclonedx < "$syft_sbom" > "$testdata_dir/syft-sboms/$name"
+    postprocess_syft_"$sbom_type" < "$syft_sbom" > "$testdata_dir/$sbom_type/syft-sboms/$name"
 done
 
-syft ./syft-sboms --select-catalogers=+sbom-cataloger -o cyclonedx-json@1.5 |
-    postprocess_syft_cyclonedx > "$testdata_dir/syft.merged-by-syft.bom.json"
+syft ./syft-sboms --select-catalogers=+sbom-cataloger -o "$syft_sbom_type" |
+    postprocess_syft_"$sbom_type" > "$testdata_dir/$sbom_type/syft.merged-by-syft.bom.json"
 
-printf "syft:%s\n" "$testdata_dir/syft-sboms"/* |
-    xargs python "$testdata_dir/../merge_sboms.py" > "$testdata_dir/syft.merged-by-us.bom.json"
+printf "syft:%s\n" "$testdata_dir/$sbom_type/syft-sboms"/* |
+    xargs python "$testdata_dir/../merge_sboms.py" > "$testdata_dir/$sbom_type/syft.merged-by-us.bom.json"

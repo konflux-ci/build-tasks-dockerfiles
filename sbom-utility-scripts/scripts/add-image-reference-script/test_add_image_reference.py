@@ -118,6 +118,9 @@ def test_is_virtual_root() -> None:
     package["name"] = "./some-dir"
     assert add_image_reference.is_virtual_root(package) is True
 
+    package["name"] = "/some/absolute/path"
+    assert add_image_reference.is_virtual_root(package) is True
+
     package["name"] = "bar"
     assert add_image_reference.is_virtual_root(package) is False
 
