@@ -1,6 +1,8 @@
 #!/usr/bin/python3.11
 
 import argparse
+import subprocess
+
 import filetype
 import functools
 import hashlib
@@ -18,7 +20,7 @@ import tempfile
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from subprocess import run
+from subprocess import run, CalledProcessError
 from tarfile import TarInfo
 from typing import Any, TypedDict, NotRequired, Literal, Final, Dict
 from urllib.parse import urlparse
@@ -56,6 +58,10 @@ class BuildResult(TypedDict):
     base_image_source_included: bool
     image_url: str
     image_digest: str
+
+
+class NoSignatureException(Exception):
+    pass
 
 
 @dataclass
@@ -170,12 +176,26 @@ def parse_cli_args():
 
 
 def registry_has_image(image: str) -> bool:
-    cmd = ["skopeo", "inspect", "--raw", "--retry-times", str(MAX_RETRIES), f"docker://{image}"]
+    cmd = [
+        "skopeo",
+        "inspect",
+        "--raw",
+        "--retry-times",
+        str(MAX_RETRIES),
+        f"docker://{image}",
+    ]
     return run(cmd, capture_output=True).returncode == 0
 
 
 def fetch_image_config(image: str) -> str:
-    cmd = ["skopeo", "inspect", "--config", "--retry-times", str(MAX_RETRIES), f"docker://{image}"]
+    cmd = [
+        "skopeo",
+        "inspect",
+        "--config",
+        "--retry-times",
+        str(MAX_RETRIES),
+        f"docker://{image}",
+    ]
     return run(cmd, check=True, text=True, capture_output=True).stdout.strip()
 
 
@@ -211,7 +231,16 @@ def skopeo_copy(
         flags.append("--remove-signatures")
     cmd = ["skopeo", "copy", *flags, src, dest]
     logger.debug("copy image: %r", cmd)
-    run(cmd, check=True)
+    try:
+        run(cmd, stderr=subprocess.PIPE, check=True)
+    except CalledProcessError as e:
+        sys.stderr.write(e.stderr.decode())
+        if (
+            "Source image rejected: A signature was required, but no signature exists"
+            in e.stderr.decode()
+        ):
+            raise NoSignatureException
+        raise
 
 
 # produces an artifact name that includes artifact's architecture
@@ -507,7 +536,13 @@ def download_parent_image_sources(source_image: str, work_dir: str) -> str:
     sources_dir = create_dir(work_dir, "parent_image_sources")
     logger.info("Copy source image %s into directory %s", source_image, sources_dir)
     # skopeo can not copy signatures to oci image layout
-    skopeo_copy(f"docker://{source_image}", f"oci:{sources_dir}", remove_signatures=True)
+    try:
+        skopeo_copy(f"docker://{source_image}", f"oci:{sources_dir}", remove_signatures=True)
+    except NoSignatureException:
+        logger.warning("Source image rejected: A signature was required, but no signature exists")
+        logger.info("Deleting", os.path.join(work_dir, "parent_image_sources"))
+        shutil.rmtree(os.path.join(work_dir, "parent_image_sources"))
+        return ""
     return sources_dir
 
 
