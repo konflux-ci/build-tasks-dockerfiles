@@ -45,9 +45,9 @@ expect_icm=$(jq -n '{
   ]
 }')
 
-banner "Checking the content of /root/buildinfo/content_manifests/content-sets.json in $TEST_IMAGE"
+banner "Checking the content of /usr/share/buildinfo/content-sets.json in $TEST_IMAGE"
 
-got_icm=$(podman run --rm "$TEST_IMAGE" cat /root/buildinfo/content_manifests/content-sets.json | jq)
+got_icm=$(podman run --rm "$TEST_IMAGE" cat /usr/share/buildinfo/content-sets.json | jq)
 
 if [[ "$expect_icm" != "$got_icm" ]]; then
     printf "%s\n" \

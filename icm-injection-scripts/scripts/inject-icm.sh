@@ -18,7 +18,9 @@ IMAGE="${1}"
 SQUASH="${SQUASH:-false}"
 
 icm_filename="content-sets.json"
-location="/root/buildinfo/content_manifests/${icm_filename}"
+# Note this used to be /root/buildinfo/content_manifests but is now /usr/share/buildinfo for compatibility
+# with bootc/ostree systems. Ref https://issues.redhat.com/browse/KONFLUX-6844
+location="/usr/share/buildinfo/${icm_filename}"
 
 if [ ! -f "./sbom-cachi2.json" ]; then
   echo "Could not find sbom-cachi2.json. No content_sets found for ICM"
@@ -68,7 +70,7 @@ echo "Constructed the following:"
 cat content-sets.json
 
 echo "Writing that to $location"
-buildah copy "$CONTAINER" content-sets.json /root/buildinfo/content_manifests/
+buildah copy "$CONTAINER" content-sets.json /usr/share/buildinfo/
 buildah config -a "org.opencontainers.image.base.name=${base_image_name}" -a "org.opencontainers.image.base.digest=${base_image_digest}" "$CONTAINER"
 
 BUILDAH_ARGS=()
