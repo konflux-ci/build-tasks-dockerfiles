@@ -14,11 +14,13 @@ class Image:
     name: str
     digest: str
     tag: str
+    build_image: bool
 
     @staticmethod
     def from_image_index_url_and_digest(
         image_url_and_tag: str,
         image_digest: str,
+        build_image: bool,
     ) -> "Image":
         """
         Create an instance of the Image class from the image URL and digest.
@@ -37,6 +39,7 @@ class Image:
             name=name,
             digest=image_digest,
             tag=tag,
+            build_image=build_image
         )
 
     @property
@@ -122,6 +125,13 @@ def setup_arg_parser() -> argparse.ArgumentParser:
         type=str,
         help="Path to save the output SBOM in JSON format.",
     )
+    parser.add_argument(
+        "--build-image",
+        "-b",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        type=bool
+    )
     return parser
 
 
@@ -139,7 +149,6 @@ def update_component_in_cyclonedx_sbom(sbom: dict, image: Image) -> dict:
     Returns:
         dict: Updated SBOM with the image reference added.
     """
-    # Add the image component to the components list
     image_component = {
         "type": "container",
         "name": image.name,
@@ -147,8 +156,13 @@ def update_component_in_cyclonedx_sbom(sbom: dict, image: Image) -> dict:
         "version": image.tag,
         "hashes": [{"alg": image.digest_algo_cyclonedx, "content": image.digest_hex_val}],
     }
-    sbom["components"].insert(0, image_component)
-    sbom["metadata"]["component"] = image_component
+    if image.build_image:
+        # Add the image component to formulation section
+        sbom.setdefault("formulation", []).append({"components": [image_component]})
+    else:
+        # Add the image component to the components list
+        sbom["components"].insert(0, image_component)
+        sbom["metadata"]["component"] = image_component
     return sbom
 
 
@@ -403,11 +417,14 @@ def main():
     image = Image.from_image_index_url_and_digest(
         args.image_url,
         args.image_digest,
+        args.build_image
     )
 
-    # Update the input SBOM with the image reference and name attributes
+    # Update the input SBOM with the image reference
     sbom = extend_sbom_with_image_reference(sbom, image)
-    sbom = update_name(sbom, image)
+    if not image.build_image:
+        # Update the input SBOM name attributes
+        sbom = update_name(sbom, image)
 
     # Save the updated SBOM to the output file
     if args.output_file:

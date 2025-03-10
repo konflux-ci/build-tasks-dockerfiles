@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import add_image_reference
 
 
@@ -12,7 +14,7 @@ def test_setup_arg_parser() -> None:
 
 def test_Image() -> None:
     image = add_image_reference.Image.from_image_index_url_and_digest(
-        "quay.io/namespace/repository/image:tag", "sha256:digest"
+        "quay.io/namespace/repository/image:tag", "sha256:digest", False
     )
 
     assert image.repository == "quay.io/namespace/repository/image"
@@ -26,22 +28,25 @@ def test_Image() -> None:
 
     assert image.purl() == ("pkg:oci/image@sha256:digest?repository_url=quay.io/namespace/repository/image")
 
-
-def test_update_component_in_cyclonedx_sbom() -> None:
+@pytest.mark.parametrize("build_image,components_count", [(True, 1), (False, 2)])
+def test_update_component_in_cyclonedx_sbom(build_image: bool, components_count: int) -> None:
     sbom = {"bomFormat": "CycloneDX", "metadata": {"component": {}}, "components": [{}]}
     image = add_image_reference.Image.from_image_index_url_and_digest(
         "quay.io/namespace/repository/image:tag",
         "sha256:digest",
+        build_image,
     )
 
     result = add_image_reference.update_component_in_cyclonedx_sbom(sbom=sbom, image=image)
 
-    assert (
-        result["metadata"]["component"]["purl"]
-        == "pkg:oci/image@sha256:digest?repository_url=quay.io/namespace/repository/image"
-    )
-    assert len(result["components"]) == 2
-    assert result["components"][0] == {
+    if not build_image:
+        assert (
+            result["metadata"]["component"]["purl"]
+            == "pkg:oci/image@sha256:digest?repository_url=quay.io/namespace/repository/image"
+        )
+    assert len(result["components"]) == components_count
+    location = result["formulation"][0]["components"][0] if build_image else result["components"][0]
+    assert location == {
         "type": "container",
         "name": image.name,
         "purl": image.purl(),
@@ -201,6 +206,7 @@ def test_update_package_in_spdx_sbom(mock_root_redicret: MagicMock) -> None:
     image = add_image_reference.Image.from_image_index_url_and_digest(
         "quay.io/namespace/repository/image:tag",
         "sha256:digest",
+        False
     )
 
     result = add_image_reference.update_package_in_spdx_sbom(sbom=sbom, image=image)
@@ -255,18 +261,17 @@ def test_extend_sbom_with_image_reference(cyclonedx_update: MagicMock, spdx_upda
 
 def test_update_name() -> None:
     image = add_image_reference.Image.from_image_index_url_and_digest(
-        "quay.io/namespace/repository/image:tag", "sha256:digest"
+        "quay.io/namespace/repository/image:tag", "sha256:digest", False
     )
 
     result = add_image_reference.update_name({"spdxVersion": "1.1.1"}, image)
     assert result["name"] == "quay.io/namespace/repository/image@sha256:digest"
 
-
 @patch("json.dump")
 @patch("json.load")
 @patch("add_image_reference.update_name")
 @patch("add_image_reference.extend_sbom_with_image_reference")
-@patch("add_image_reference.Image.from_image_index_url_and_digest")
+@patch("add_image_reference.Image.from_image_index_url_and_digest", return_value=add_image_reference.Image("quay.io/namespace/repository/image", "image", "sha256:digest", "latest", False))
 @patch("builtins.open")
 @patch("add_image_reference.setup_arg_parser")
 def test_main(
@@ -288,4 +293,32 @@ def test_main(
     mock_load.assert_called_once()
     mock_extend_sbom.assert_called_once()
     mock_name.assert_called_once()
+    mock_dump.assert_called_once()
+
+@patch("json.dump")
+@patch("json.load")
+@patch("add_image_reference.update_name")
+@patch("add_image_reference.extend_sbom_with_image_reference")
+@patch("add_image_reference.Image.from_image_index_url_and_digest", return_value=add_image_reference.Image("quay.io/namespace/repository/image", "image", "sha256:digest", "latest", True))
+@patch("builtins.open")
+@patch("add_image_reference.setup_arg_parser")
+def test_main_build_image(
+    mock_parser: MagicMock,
+    mock_open: MagicMock,
+    mock_image: MagicMock,
+    mock_extend_sbom: MagicMock,
+    mock_name: MagicMock,
+    mock_load: MagicMock,
+    mock_dump: MagicMock,
+) -> None:
+    add_image_reference.main()
+
+    mock_parser.assert_called_once()
+    mock_parser.return_value.parse_args.assert_called_once()
+    mock_image.assert_called_once()
+    assert mock_open.call_count == 2
+
+    mock_load.assert_called_once()
+    mock_extend_sbom.assert_called_once()
+    mock_name.assert_not_called()
     mock_dump.assert_called_once()
