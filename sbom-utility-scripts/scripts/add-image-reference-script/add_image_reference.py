@@ -122,6 +122,11 @@ def setup_arg_parser() -> argparse.ArgumentParser:
         type=str,
         help="Path to save the output SBOM in JSON format.",
     )
+    parser.add_argument(
+        "--generate-id",
+        default="store_true",
+        help="Whether to generate a SPDX ID out of the image name and digest. Defaults to False.",
+    )
     return parser
 
 
@@ -305,7 +310,20 @@ def redirect_current_roots_to_new_root(sbom: dict, new_root: str) -> dict:
     return sbom
 
 
-def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
+def get_spdxid_from_image(image: Image) -> str:
+    """
+    Generate a SPDX ID from an image repository and digest
+
+    Args:
+        image (Image): Image to generate the SPDX ID from.
+
+    Returns:
+        str: SPDX ID in the format SPDXRef-image-{image.repository}-{image.digest}.
+    """
+    return f"SPDXRef-image-{image.repository}-{image.digest}"
+
+
+def update_package_in_spdx_sbom(sbom: dict, image: Image, generate_id: bool = False) -> dict:
     """
     Update the SPDX SBOM with the image reference.
 
@@ -315,13 +333,17 @@ def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
     Args:
         sbom (dict): SBOM in JSON format.
         image (Image): An instance of the Image class that represents the image.
+        generate_id (bool): Indicate if the SPDX ID should be generated.
 
     Returns:
         dict: Updated SBOM with the image reference added.
     """
+
+    spdxid = get_spdxid_from_image(image) if generate_id else "SPDXRef-image"
+
     # Add the image package to the packages list
     package = {
-        "SPDXID": "SPDXRef-image",
+        "SPDXID": spdxid,
         "name": image.name,
         "versionInfo": image.tag,
         "downloadLocation": "NOASSERTION",
@@ -353,7 +375,7 @@ def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
     return sbom
 
 
-def extend_sbom_with_image_reference(sbom: dict, image: Image) -> dict:
+def extend_sbom_with_image_reference(sbom: dict, image: Image, generate_id: bool = False) -> dict:
     """
     Extend the SBOM with the image reference.
     Based on the SBOM format, the image reference is added to the SBOM in
@@ -362,6 +384,7 @@ def extend_sbom_with_image_reference(sbom: dict, image: Image) -> dict:
     Args:
         sbom (dict): SBOM in JSON format.
         image (Image): An instance of the Image class that represents the image.
+        generate_id (bool): Indicate if the SPDX ID should be generated.
 
     Returns:
         dict: Updated SBOM with the image reference added.
@@ -369,7 +392,7 @@ def extend_sbom_with_image_reference(sbom: dict, image: Image) -> dict:
     if sbom.get("bomFormat") == "CycloneDX":
         update_component_in_cyclonedx_sbom(sbom, image)
     elif "spdxVersion" in sbom:
-        update_package_in_spdx_sbom(sbom, image)
+        update_package_in_spdx_sbom(sbom, image, generate_id)
 
     return sbom
 
@@ -406,7 +429,7 @@ def main():
     )
 
     # Update the input SBOM with the image reference and name attributes
-    sbom = extend_sbom_with_image_reference(sbom, image)
+    sbom = extend_sbom_with_image_reference(sbom, image, args.generate_id)
     sbom = update_name(sbom, image)
 
     # Save the updated SBOM to the output file
