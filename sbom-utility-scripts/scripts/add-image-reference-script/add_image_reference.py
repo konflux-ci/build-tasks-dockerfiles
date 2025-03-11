@@ -323,6 +323,24 @@ def redirect_current_roots_to_new_root(sbom: dict, new_root: str) -> dict:
             relationship["relationshipType"] = "CONTAINS"
     return sbom
 
+def find_spdx_root_package(sbom: dict) -> str:
+    """Find the element that's in relationship <DOCUMENT> DESCRIBES <ELEMENT>.
+
+    If there isn't exactly one such element, raise an error.
+    """
+    doc_spxid = sbom["SPDXID"]
+    doc_describes = [
+        r["relatedSpdxElement"]
+        for r in sbom.get("relationships", [])
+        if r["spdxElementId"] == doc_spxid and r["relationshipType"] == "DESCRIBES"
+    ]
+    if len(doc_describes) != 1:
+        raise ValueError(
+            "Expected to find exactly one <DOCUMENT> DESCRIBES <ROOT> relationship. "
+            f"Found {len(doc_describes)} ROOTs: {doc_describes}"
+        )
+    return doc_describes[0]
+
 
 def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
     """
@@ -357,18 +375,27 @@ def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
     }
     sbom["packages"].insert(0, package)
 
-    # Check existing relationships and redirect the current roots to the new root
-    redirect_current_roots_to_new_root(sbom, package["SPDXID"])
+    if image.build_image:
+        root = find_spdx_root_package(sbom)
+        # Add the relationship between the build image and the package
+        sbom["relationships"].insert({
+            "spdxElementId": package["SPDXID"],
+            "relationshipType": "BUILD_TOOL_OF",
+            "relatedSpdxElement": root,
+        })
+    else:
+        # Check existing relationships and redirect the current roots to the new root
+        redirect_current_roots_to_new_root(sbom, package["SPDXID"])
 
-    # Add the relationship between the image and the package
-    sbom["relationships"].insert(
-        0,
-        {
-            "spdxElementId": sbom["SPDXID"],
-            "relationshipType": "DESCRIBES",
-            "relatedSpdxElement": package["SPDXID"],
-        },
-    )
+        # Add the relationship between the image and the package
+        sbom["relationships"].insert(
+            0,
+            {
+                "spdxElementId": sbom["SPDXID"],
+                "relationshipType": "DESCRIBES",
+                "relatedSpdxElement": package["SPDXID"],
+            },
+        )
     return sbom
 
 
