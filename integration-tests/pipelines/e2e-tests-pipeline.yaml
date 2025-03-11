@@ -30,18 +30,17 @@ spec:
               value: $(params.SNAPSHOT)
             script: |
               echo "SNAPSHOT: ${SNAPSHOT}"
-              export SOURCE_IMAGE=$(jq -r '.components[] | select(.name == "source-container-build") | .containerImage' <<< "$SNAPSHOT")
-              echo "Built image: ${SOURCE_IMAGE}"
+              export SOURCE_BUILD_IMAGE=$(jq -r '.components[] | select(.name == "source-container-build") | .containerImage' <<< "$SNAPSHOT")
 
-              git clone --branch main https://github.com/redhat-appstudio/e2e-tests.git
+              git clone --branch setup-bundle-for-group https://github.com/tisutisu/e2e-tests.git
               cd e2e-tests/
-              make setup-source-build | tee cmd_output
+              make setup-bundle-for-build-tasks-dockerfiles-group-build | tee cmd_output
               last_line_output=$(tail -n 1 cmd_output)
               IFS='='
               read -ra arr <<< "$last_line_output"
-              custom_source_build_bundle=${arr[1]}
+              custom_pipeline_bundle=${arr[1]}
 
-              echo -n ${custom_source_build_bundle} | tee $(results.custom-source-build-bundle.path)
+              echo -n ${custom_pipeline_bundle} | tee $(results.custom-source-build-bundle.path)
 
     - name: run-e2e-tests
       params:
