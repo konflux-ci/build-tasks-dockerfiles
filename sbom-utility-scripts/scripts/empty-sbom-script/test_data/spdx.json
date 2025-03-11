@@ -1,0 +1,27 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "documentNamespace": "https://konflux-ci.dev/spdxdocs/sbom-for-oci-copy-task/a29a127a-daf6-44d3-a840-4eca194e9b41",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "creationInfo": {
+    "created": "2025-01-14T11:46:34Z",
+    "creators": [
+      "Tool: Konflux"
+    ]
+  },
+  "name": "sbom-for-oci-copy-task",
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-DocumentRoot-Unknown",
+      "downloadLocation": "NOASSERTION",
+      "name": ""
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-DocumentRoot-Unknown"
+    }
+  ]
+}
