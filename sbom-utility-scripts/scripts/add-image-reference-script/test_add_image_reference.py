@@ -28,7 +28,7 @@ def test_Image() -> None:
 
     assert image.purl() == ("pkg:oci/image@sha256:digest?repository_url=quay.io/namespace/repository/image")
 
-@pytest.mark.parametrize("build_image,components_count", [(True, 1), (False, 2)])
+@pytest.mark.parametrize("build_image,components_count", [(True, 1), (False, 2)], ids=["build-image", "component-image"])
 def test_update_component_in_cyclonedx_sbom(build_image: bool, components_count: int) -> None:
     sbom = {"bomFormat": "CycloneDX", "metadata": {"component": {}}, "components": [{}]}
     image = add_image_reference.Image.from_image_index_url_and_digest(
@@ -39,20 +39,30 @@ def test_update_component_in_cyclonedx_sbom(build_image: bool, components_count:
 
     result = add_image_reference.update_component_in_cyclonedx_sbom(sbom=sbom, image=image)
 
-    if not build_image:
-        assert (
-            result["metadata"]["component"]["purl"]
-            == "pkg:oci/image@sha256:digest?repository_url=quay.io/namespace/repository/image"
-        )
-    assert len(result["components"]) == components_count
-    location = result["formulation"][0]["components"][0] if build_image else result["components"][0]
-    assert location == {
+    image_sbom = {
         "type": "container",
         "name": image.name,
         "purl": image.purl(),
         "version": image.tag,
         "hashes": [{"alg": image.digest_algo_cyclonedx, "content": image.digest_hex_val}],
     }
+
+    if build_image:
+        location = result["formulation"][0]["components"][0]
+        image_sbom["properties"]: [{
+            "name": "konflux:container:is_builder_image:for_stage",
+            "value": "1",
+        }]
+        assert location
+    else:
+        location = result["components"][0]
+        assert (
+            result["metadata"]["component"]["purl"]
+            == "pkg:oci/image@sha256:digest?repository_url=quay.io/namespace/repository/image"
+        )
+    assert len(result["components"]) == components_count
+    
+    assert location == image_sbom
     assert result["metadata"]["component"] == result["components"][0]
 
 
