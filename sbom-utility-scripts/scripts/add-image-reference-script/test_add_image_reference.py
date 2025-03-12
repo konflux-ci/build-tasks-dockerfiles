@@ -28,13 +28,13 @@ def test_Image() -> None:
 
     assert image.purl() == ("pkg:oci/image@sha256:digest?repository_url=quay.io/namespace/repository/image")
 
-@pytest.mark.parametrize("build_image,components_count", [(True, 1), (False, 2)], ids=["build-image", "component-image"])
-def test_update_component_in_cyclonedx_sbom(build_image: bool, components_count: int) -> None:
+@pytest.mark.parametrize("builder_image,components_count", [(True, 1), (False, 2)], ids=["build-image", "component-image"])
+def test_update_component_in_cyclonedx_sbom(builder_image: bool, components_count: int) -> None:
     sbom = {"bomFormat": "CycloneDX", "metadata": {"component": {}}, "components": [{}]}
     image = add_image_reference.Image.from_image_index_url_and_digest(
         "quay.io/namespace/repository/image:tag",
         "sha256:digest",
-        build_image,
+        builder_image,
     )
 
     result = add_image_reference.update_component_in_cyclonedx_sbom(sbom=sbom, image=image)
@@ -47,7 +47,7 @@ def test_update_component_in_cyclonedx_sbom(build_image: bool, components_count:
         "hashes": [{"alg": image.digest_algo_cyclonedx, "content": image.digest_hex_val}],
     }
 
-    if build_image:
+    if builder_image:
         location = result["formulation"][0]["components"][0]
         image_sbom["properties"]: [{
             "name": "konflux:container:is_builder_image:for_stage",
@@ -312,7 +312,7 @@ def test_main(
 @patch("add_image_reference.Image.from_image_index_url_and_digest", return_value=add_image_reference.Image("quay.io/namespace/repository/image", "image", "sha256:digest", "latest", True))
 @patch("builtins.open")
 @patch("add_image_reference.setup_arg_parser")
-def test_main_build_image(
+def test_main_builder_image(
     mock_parser: MagicMock,
     mock_open: MagicMock,
     mock_image: MagicMock,

@@ -14,13 +14,13 @@ class Image:
     name: str
     digest: str
     tag: str
-    build_image: bool
+    builder_image: bool
 
     @staticmethod
     def from_image_index_url_and_digest(
         image_url_and_tag: str,
         image_digest: str,
-        build_image: bool,
+        builder_image: bool,
     ) -> "Image":
         """
         Create an instance of the Image class from the image URL and digest.
@@ -39,7 +39,7 @@ class Image:
             name=name,
             digest=image_digest,
             tag=tag,
-            build_image=build_image
+            builder_image=builder_image
         )
 
     @property
@@ -126,11 +126,12 @@ def setup_arg_parser() -> argparse.ArgumentParser:
         help="Path to save the output SBOM in JSON format.",
     )
     parser.add_argument(
-        "--build-image",
+        "--builder-image",
         "-b",
         action=argparse.BooleanOptionalAction,
         default=False,
-        type=bool
+        type=bool,
+        help="Add the referenced image as a builder image."
     )
     return parser
 
@@ -156,7 +157,7 @@ def update_component_in_cyclonedx_sbom(sbom: dict, image: Image) -> dict:
         "version": image.tag,
         "hashes": [{"alg": image.digest_algo_cyclonedx, "content": image.digest_hex_val}],
     }
-    if image.build_image:
+    if image.builder_image:
         # Add base image property to image_component
         image_component["properties"]: [{
             "name": "konflux:container:is_builder_image:for_stage",
@@ -375,7 +376,7 @@ def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
     }
     sbom["packages"].insert(0, package)
 
-    if image.build_image:
+    if image.builder_image:
         root = find_spdx_root_package(sbom)
         # Add the relationship between the build image and the package
         sbom["relationships"].insert({
@@ -449,12 +450,12 @@ def main():
     image = Image.from_image_index_url_and_digest(
         args.image_url,
         args.image_digest,
-        args.build_image
+        args.builder_image
     )
 
     # Update the input SBOM with the image reference
     sbom = extend_sbom_with_image_reference(sbom, image)
-    if not image.build_image:
+    if not image.builder_image:
         # Update the input SBOM name attributes
         sbom = update_name(sbom, image)
 
