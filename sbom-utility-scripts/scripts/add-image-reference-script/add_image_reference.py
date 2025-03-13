@@ -9,8 +9,8 @@ from typing import Optional
 from packageurl import PackageURL
 
 BUILDER_IMAGE_PROPERTY = {
-    "name": "konflux:container:is_builder_image:for_script",
-    "value": "true",
+    "name": "konflux:container:is_builder_image:additional_builder_image",
+    "value": "run-script",
 }
 
 @dataclass

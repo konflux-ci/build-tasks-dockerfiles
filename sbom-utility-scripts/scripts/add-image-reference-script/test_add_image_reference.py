@@ -51,8 +51,8 @@ def test_update_component_in_cyclonedx_sbom(builder_image: bool, components_coun
     if builder_image:
         location = result["formulation"][0]["components"][0]
         image_sbom["properties"]: [{
-            "name": "konflux:container:is_builder_image:for_script",
-            "value": "true",
+            "name": "konflux:container:is_builder_image:additional_builder_image",
+            "value": "run-script",
         }]
         assert location
     else:
@@ -376,7 +376,7 @@ def test_update_package_in_spdx_sbom_builder_image(mock_dt) -> None:
         'annotations': [{'annotationDate': '2025-03-12T00:00:00Z',
             'annotationType': 'OTHER',
             'annotator': 'Tool: konflux:jsonencoded',
-            'comment': '{"name":"konflux:container:is_builder_image:for_script","value":"true"}'}
+            'comment': '{"name":"konflux:container:is_builder_image:additional_builder_image","value":"run-script"}'}
         ]
     }
 
