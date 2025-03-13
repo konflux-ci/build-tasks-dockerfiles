@@ -158,10 +158,10 @@ def update_component_in_cyclonedx_sbom(sbom: dict, image: Image) -> dict:
         "hashes": [{"alg": image.digest_algo_cyclonedx, "content": image.digest_hex_val}],
     }
     if image.builder_image:
-        # Add base image property to image_component
+        # Add builder image property to image_component
         image_component["properties"]: [{
-            "name": "konflux:container:is_builder_image:for_stage",
-            "value": "1",
+            "name": "konflux:container:is_builder_image:for_script",
+            "value": "true",
         }]
         # Add the image component to formulation section
         sbom.setdefault("formulation", []).append({"components": [image_component]})

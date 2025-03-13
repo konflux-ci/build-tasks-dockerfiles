@@ -50,8 +50,8 @@ def test_update_component_in_cyclonedx_sbom(builder_image: bool, components_coun
     if builder_image:
         location = result["formulation"][0]["components"][0]
         image_sbom["properties"]: [{
-            "name": "konflux:container:is_builder_image:for_stage",
-            "value": "1",
+            "name": "konflux:container:is_builder_image:for_script",
+            "value": "true",
         }]
         assert location
     else:
