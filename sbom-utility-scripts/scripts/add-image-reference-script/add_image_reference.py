@@ -345,6 +345,11 @@ def find_spdx_root_package(sbom: dict) -> str:
     return doc_describes[0]
 
 
+def _datetime_utc_now() -> datetime.datetime:
+    # a mockable datetime.datetime.now (just for tests):
+    return datetime.datetime.now(datetime.UTC) # pragma: no cover
+
+
 def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
     """
     Update the SPDX SBOM with the image reference.
@@ -359,7 +364,6 @@ def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
     Returns:
         dict: Updated SBOM with the image reference added.
     """
-    # Add the image package to the packages list
     package = {
         "SPDXID": "SPDXRef-image",
         "name": image.name,
@@ -376,10 +380,11 @@ def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
         ],
         "checksums": [{"algorithm": image.digest_algo_spdx, "checksumValue": image.digest_hex_val}],
     }
-    sbom["packages"].insert(0, package)
 
     if image.builder_image:
-        annotation_date = datetime.datetime.now(datetime.UTC)
+        # Append the builder image package to the packages list
+        sbom["packages"].append(package)
+        annotation_date = _datetime_utc_now()
         package["annotations"] = [
             {
                 "annotator": "Tool: konflux:jsonencoded",
@@ -391,12 +396,14 @@ def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
         ]
         root = find_spdx_root_package(sbom)
         # Add the relationship between the build image and the package
-        sbom["relationships"].insert({
+        sbom["relationships"].append({
             "spdxElementId": package["SPDXID"],
             "relationshipType": "BUILD_TOOL_OF",
             "relatedSpdxElement": root,
         })
     else:
+        # Add the image package to the packages list
+        sbom["packages"].insert(0, package)
         # Check existing relationships and redirect the current roots to the new root
         redirect_current_roots_to_new_root(sbom, package["SPDXID"])
 
