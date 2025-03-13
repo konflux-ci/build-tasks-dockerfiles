@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import datetime
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -7,6 +8,10 @@ from typing import Optional
 
 from packageurl import PackageURL
 
+BUILDER_IMAGE_PROPERTY = {
+    "name": "konflux:container:is_builder_image:for_script",
+    "value": "true",
+}
 
 @dataclass
 class Image:
@@ -159,10 +164,7 @@ def update_component_in_cyclonedx_sbom(sbom: dict, image: Image) -> dict:
     }
     if image.builder_image:
         # Add builder image property to image_component
-        image_component["properties"]: [{
-            "name": "konflux:container:is_builder_image:for_script",
-            "value": "true",
-        }]
+        image_component["properties"]: [BUILDER_IMAGE_PROPERTY]
         # Add the image component to formulation section
         sbom.setdefault("formulation", []).append({"components": [image_component]})
     else:
@@ -377,6 +379,16 @@ def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
     sbom["packages"].insert(0, package)
 
     if image.builder_image:
+        annotation_date = datetime.datetime.now(datetime.UTC)
+        package["annotations"] = [
+            {
+                "annotator": "Tool: konflux:jsonencoded",
+                "comment": json.dumps(BUILDER_IMAGE_PROPERTY, separators=(",", ":")),
+                # https://spdx.github.io/spdx-spec/v2.3/annotations/#122-annotation-date-field
+                "annotationDate": annotation_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "annotationType": "OTHER",
+            }
+        ]
         root = find_spdx_root_package(sbom)
         # Add the relationship between the build image and the package
         sbom["relationships"].insert({
