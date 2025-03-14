@@ -18,9 +18,14 @@ COPY scripts/add-image-reference-script/requirements.txt /scripts/add-image-refe
 COPY scripts/sbom-for-oci-copy-task/sbom_for_oci_copy_task.py /scripts
 COPY scripts/sbom-for-oci-copy-task/requirements.txt /scripts/sbom-for-oci-copy-task-requirements.txt
 
+COPY scripts/sbom-for-modelcar-task/sbom_for_modelcar_task.py /scripts
+COPY scripts/sbom-for-modelcar-task/requirements.txt /scripts/sbom-for-modelcar-task-requirements.txt
+
+
 RUN pip3 install --no-cache-dir \
     -r merge-sboms-script-requirements.txt \
     -r base-images-sbom-script-requirements.txt \
     -r index-image-sbom-script-requirements.txt \
     -r add-image-reference-requirements.txt \
-    -r sbom-for-oci-copy-task-requirements.txt
+    -r sbom-for-oci-copy-task-requirements.txt \
+    -r sbom-for-modelcar-task-requirements.txt \
