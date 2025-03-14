@@ -13,19 +13,20 @@ BUILDER_IMAGE_PROPERTY = {
     "value": "run-script",
 }
 
+
 @dataclass
 class Image:
     repository: str
     name: str
     digest: str
     tag: str
-    builder_image: bool
+    is_builder_image: bool
 
     @staticmethod
     def from_image_index_url_and_digest(
         image_url_and_tag: str,
         image_digest: str,
-        builder_image: bool,
+        is_builder_image: bool,
     ) -> "Image":
         """
         Create an instance of the Image class from the image URL and digest.
@@ -39,13 +40,7 @@ class Image:
         """
         repository, tag = image_url_and_tag.rsplit(":", 1)
         _, name = repository.rsplit("/", 1)
-        return Image(
-            repository=repository,
-            name=name,
-            digest=image_digest,
-            tag=tag,
-            builder_image=builder_image
-        )
+        return Image(repository=repository, name=name, digest=image_digest, tag=tag, is_builder_image=is_builder_image)
 
     @property
     def digest_algo_cyclonedx(self) -> str:
@@ -136,7 +131,7 @@ def setup_arg_parser() -> argparse.ArgumentParser:
         action=argparse.BooleanOptionalAction,
         default=False,
         type=bool,
-        help="Add the referenced image as a builder image."
+        help="Add the referenced image as a builder image.",
     )
     return parser
 
@@ -162,7 +157,7 @@ def update_component_in_cyclonedx_sbom(sbom: dict, image: Image) -> dict:
         "version": image.tag,
         "hashes": [{"alg": image.digest_algo_cyclonedx, "content": image.digest_hex_val}],
     }
-    if image.builder_image:
+    if image.is_builder_image:
         # Add builder image property to image_component
         image_component["properties"]: [BUILDER_IMAGE_PROPERTY]
         # Add the image component to formulation section
@@ -326,6 +321,7 @@ def redirect_current_roots_to_new_root(sbom: dict, new_root: str) -> dict:
             relationship["relationshipType"] = "CONTAINS"
     return sbom
 
+
 def find_spdx_root_package(sbom: dict) -> str:
     """Find the element that's in relationship <DOCUMENT> DESCRIBES <ELEMENT>.
 
@@ -347,7 +343,7 @@ def find_spdx_root_package(sbom: dict) -> str:
 
 def _datetime_utc_now() -> datetime.datetime:
     # a mockable datetime.datetime.now (just for tests):
-    return datetime.datetime.now(datetime.UTC) # pragma: no cover
+    return datetime.datetime.now(datetime.UTC)  # pragma: no cover
 
 
 def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
@@ -381,7 +377,7 @@ def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
         "checksums": [{"algorithm": image.digest_algo_spdx, "checksumValue": image.digest_hex_val}],
     }
 
-    if image.builder_image:
+    if image.is_builder_image:
         # Append the builder image package to the packages list
         sbom["packages"].append(package)
         annotation_date = _datetime_utc_now()
@@ -396,11 +392,13 @@ def update_package_in_spdx_sbom(sbom: dict, image: Image) -> dict:
         ]
         root = find_spdx_root_package(sbom)
         # Add the relationship between the build image and the package
-        sbom["relationships"].append({
-            "spdxElementId": package["SPDXID"],
-            "relationshipType": "BUILD_TOOL_OF",
-            "relatedSpdxElement": root,
-        })
+        sbom["relationships"].append(
+            {
+                "spdxElementId": package["SPDXID"],
+                "relationshipType": "BUILD_TOOL_OF",
+                "relatedSpdxElement": root,
+            }
+        )
     else:
         # Add the image package to the packages list
         sbom["packages"].insert(0, package)
@@ -466,15 +464,11 @@ def main():
     with open(args.input_file, "r") as inp_file:
         sbom = json.load(inp_file)
 
-    image = Image.from_image_index_url_and_digest(
-        args.image_url,
-        args.image_digest,
-        args.builder_image
-    )
+    image = Image.from_image_index_url_and_digest(args.image_url, args.image_digest, args.builder_image)
 
     # Update the input SBOM with the image reference
     sbom = extend_sbom_with_image_reference(sbom, image)
-    if not image.builder_image:
+    if not image.is_builder_image:
         # Update the input SBOM name attributes
         sbom = update_name(sbom, image)
 

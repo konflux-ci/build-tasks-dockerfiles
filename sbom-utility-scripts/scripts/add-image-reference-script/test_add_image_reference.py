@@ -29,7 +29,10 @@ def test_Image() -> None:
 
     assert image.purl() == ("pkg:oci/image@sha256:digest?repository_url=quay.io/namespace/repository/image")
 
-@pytest.mark.parametrize("builder_image,components_count", [(True, 1), (False, 2)], ids=["build-image", "component-image"])
+
+@pytest.mark.parametrize(
+    "builder_image,components_count", [(True, 1), (False, 2)], ids=["build-image", "component-image"]
+)
 def test_update_component_in_cyclonedx_sbom(builder_image: bool, components_count: int) -> None:
     sbom = {"bomFormat": "CycloneDX", "metadata": {"component": {}}, "components": [{}]}
     image = add_image_reference.Image.from_image_index_url_and_digest(
@@ -50,10 +53,11 @@ def test_update_component_in_cyclonedx_sbom(builder_image: bool, components_coun
 
     if builder_image:
         location = result["formulation"][0]["components"][0]
-        image_sbom["properties"]: [{
+        image_sbom_proterty = {
             "name": "konflux:container:is_builder_image:additional_builder_image",
             "value": "run-script",
-        }]
+        }
+        image_sbom["properties"]: [image_sbom_proterty]
         assert location
     else:
         location = result["components"][0]
@@ -62,7 +66,7 @@ def test_update_component_in_cyclonedx_sbom(builder_image: bool, components_coun
             == "pkg:oci/image@sha256:digest?repository_url=quay.io/namespace/repository/image"
         )
     assert len(result["components"]) == components_count
-    
+
     assert location == image_sbom
     assert result["metadata"]["component"] == result["components"][0]
 
@@ -210,8 +214,10 @@ def test_redirect_current_roots_to_new_root() -> None:
         "SPDXID": "foo",
     }
 
+
 @pytest.mark.parametrize(
-    "sbom,expected_output",[
+    "sbom,expected_output",
+    [
         # SPDX with no root package
         (
             {
@@ -220,7 +226,7 @@ def test_redirect_current_roots_to_new_root() -> None:
                 "name": "MyProject",
                 "documentNamespace": "http://example.com/uid-1234",
             },
-            ValueError(r"Found 0 ROOTs: \[\]")
+            ValueError(r"Found 0 ROOTs: \[\]"),
         ),
         # SPDX with too many roots
         (
@@ -254,7 +260,7 @@ def test_redirect_current_roots_to_new_root() -> None:
                     },
                 ],
             },
-            ValueError(r"Found 2 ROOTs: \['SPDXRef-root1', 'SPDXRef-root2'\]")
+            ValueError(r"Found 2 ROOTs: \['SPDXRef-root1', 'SPDXRef-root2'\]"),
         ),
         # minimal valid SPDX SBOM
         (
@@ -278,10 +284,10 @@ def test_redirect_current_roots_to_new_root() -> None:
                     },
                 ],
             },
-            "SPDXRef-image-my-cool-image"
-        )    
-    ]
-    )
+            "SPDXRef-image-my-cool-image",
+        ),
+    ],
+)
 def test_find_spdx_root_package(sbom, expected_output) -> None:
     if not isinstance(expected_output, Exception):
         assert add_image_reference.find_spdx_root_package(sbom) == expected_output
@@ -289,13 +295,12 @@ def test_find_spdx_root_package(sbom, expected_output) -> None:
         with pytest.raises(type(expected_output), match=str(expected_output)):
             add_image_reference.find_spdx_root_package(sbom)
 
+
 @patch("add_image_reference.redirect_current_roots_to_new_root")
 def test_update_package_in_spdx_sbom(mock_root_redicret: MagicMock) -> None:
     sbom = {"spdxVersion": "1.1.1", "SPDXID": "foo", "packages": [{}], "relationships": []}
     image = add_image_reference.Image.from_image_index_url_and_digest(
-        "quay.io/namespace/repository/image:tag",
-        "sha256:digest",
-        False
+        "quay.io/namespace/repository/image:tag", "sha256:digest", False
     )
 
     result = add_image_reference.update_package_in_spdx_sbom(sbom=sbom, image=image)
@@ -327,6 +332,7 @@ def test_update_package_in_spdx_sbom(mock_root_redicret: MagicMock) -> None:
 
     mock_root_redicret.assert_called_once_with(sbom, "SPDXRef-image")
 
+
 @patch("add_image_reference._datetime_utc_now", return_value=datetime.datetime(2025, 3, 12))
 def test_update_package_in_spdx_sbom_builder_image(mock_dt) -> None:
     sbom = {
@@ -350,9 +356,7 @@ def test_update_package_in_spdx_sbom_builder_image(mock_dt) -> None:
         ],
     }
     image = add_image_reference.Image.from_image_index_url_and_digest(
-        "quay.io/namespace/repository/image:tag",
-        "sha256:digest",
-        True
+        "quay.io/namespace/repository/image:tag", "sha256:digest", True
     )
 
     result = add_image_reference.update_package_in_spdx_sbom(sbom=sbom, image=image)
@@ -373,11 +377,14 @@ def test_update_package_in_spdx_sbom_builder_image(mock_dt) -> None:
             }
         ],
         "checksums": [{"algorithm": image.digest_algo_spdx, "checksumValue": image.digest_hex_val}],
-        'annotations': [{'annotationDate': '2025-03-12T00:00:00Z',
-            'annotationType': 'OTHER',
-            'annotator': 'Tool: konflux:jsonencoded',
-            'comment': '{"name":"konflux:container:is_builder_image:additional_builder_image","value":"run-script"}'}
-        ]
+        "annotations": [
+            {
+                "annotationDate": "2025-03-12T00:00:00Z",
+                "annotationType": "OTHER",
+                "annotator": "Tool: konflux:jsonencoded",
+                "comment": '{"name":"konflux:container:is_builder_image:additional_builder_image","value":"run-script"}',  # noqa: E501
+            }
+        ],
     }
 
     assert len(result["relationships"]) == 2
@@ -386,6 +393,7 @@ def test_update_package_in_spdx_sbom_builder_image(mock_dt) -> None:
         "relationshipType": "BUILD_TOOL_OF",
         "relatedSpdxElement": "SPDXRef-image-my-cool-image",
     }
+
 
 @patch("add_image_reference.update_package_in_spdx_sbom")
 @patch("add_image_reference.update_component_in_cyclonedx_sbom")
@@ -415,11 +423,17 @@ def test_update_name() -> None:
     result = add_image_reference.update_name({"spdxVersion": "1.1.1"}, image)
     assert result["name"] == "quay.io/namespace/repository/image@sha256:digest"
 
+
 @patch("json.dump")
 @patch("json.load")
 @patch("add_image_reference.update_name")
 @patch("add_image_reference.extend_sbom_with_image_reference")
-@patch("add_image_reference.Image.from_image_index_url_and_digest", return_value=add_image_reference.Image("quay.io/namespace/repository/image", "image", "sha256:digest", "latest", False))
+@patch(
+    "add_image_reference.Image.from_image_index_url_and_digest",
+    return_value=add_image_reference.Image(
+        "quay.io/namespace/repository/image", "image", "sha256:digest", "latest", False
+    ),
+)
 @patch("builtins.open")
 @patch("add_image_reference.setup_arg_parser")
 def test_main(
@@ -443,11 +457,17 @@ def test_main(
     mock_name.assert_called_once()
     mock_dump.assert_called_once()
 
+
 @patch("json.dump")
 @patch("json.load")
 @patch("add_image_reference.update_name")
 @patch("add_image_reference.extend_sbom_with_image_reference")
-@patch("add_image_reference.Image.from_image_index_url_and_digest", return_value=add_image_reference.Image("quay.io/namespace/repository/image", "image", "sha256:digest", "latest", True))
+@patch(
+    "add_image_reference.Image.from_image_index_url_and_digest",
+    return_value=add_image_reference.Image(
+        "quay.io/namespace/repository/image", "image", "sha256:digest", "latest", True
+    ),
+)
 @patch("builtins.open")
 @patch("add_image_reference.setup_arg_parser")
 def test_main_builder_image(
