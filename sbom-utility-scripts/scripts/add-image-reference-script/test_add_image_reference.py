@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import add_image_reference
 
 
@@ -196,18 +198,22 @@ def test_redirect_current_roots_to_new_root() -> None:
 
 
 @patch("add_image_reference.redirect_current_roots_to_new_root")
-def test_update_package_in_spdx_sbom(mock_root_redicret: MagicMock) -> None:
+@pytest.mark.parametrize(
+    "generate_id,expected_spdxid",
+    [(True, "SPDXRef-image-quay.io/namespace/repository/image-sha256:digest"), (False, "SPDXRef-image")],
+)
+def test_update_package_in_spdx_sbom(mock_root_redicret: MagicMock, generate_id, expected_spdxid) -> None:
     sbom = {"spdxVersion": "1.1.1", "SPDXID": "foo", "packages": [{}], "relationships": []}
     image = add_image_reference.Image.from_image_index_url_and_digest(
         "quay.io/namespace/repository/image:tag",
         "sha256:digest",
     )
 
-    result = add_image_reference.update_package_in_spdx_sbom(sbom=sbom, image=image)
+    result = add_image_reference.update_package_in_spdx_sbom(sbom=sbom, image=image, generate_id=generate_id)
 
     assert len(result["packages"]) == 2
     assert result["packages"][0] == {
-        "SPDXID": "SPDXRef-image",
+        "SPDXID": expected_spdxid,
         "name": image.name,
         "versionInfo": image.tag,
         "downloadLocation": "NOASSERTION",
@@ -227,10 +233,10 @@ def test_update_package_in_spdx_sbom(mock_root_redicret: MagicMock) -> None:
     assert result["relationships"][0] == {
         "spdxElementId": sbom["SPDXID"],
         "relationshipType": "DESCRIBES",
-        "relatedSpdxElement": "SPDXRef-image",
+        "relatedSpdxElement": expected_spdxid,
     }
 
-    mock_root_redicret.assert_called_once_with(sbom, "SPDXRef-image")
+    mock_root_redicret.assert_called_once_with(sbom, expected_spdxid)
 
 
 @patch("add_image_reference.update_package_in_spdx_sbom")
@@ -250,7 +256,7 @@ def test_extend_sbom_with_image_reference(cyclonedx_update: MagicMock, spdx_upda
     add_image_reference.extend_sbom_with_image_reference(sbom, image)
 
     cyclonedx_update.assert_not_called()
-    spdx_update.assert_called_once_with(sbom, image)
+    spdx_update.assert_called_once_with(sbom, image, False)
 
 
 def test_update_name() -> None:
@@ -289,3 +295,13 @@ def test_main(
     mock_extend_sbom.assert_called_once()
     mock_name.assert_called_once()
     mock_dump.assert_called_once()
+
+
+def test_get_spdxid_from_image():
+
+    image = add_image_reference.Image.from_image_index_url_and_digest(
+        "quay.io/namespace/repository/image:tag", "sha256:digest"
+    )
+
+    actual = add_image_reference.get_spdxid_from_image(image)
+    assert actual == "SPDXRef-image-quay.io/namespace/repository/image-sha256:digest"
