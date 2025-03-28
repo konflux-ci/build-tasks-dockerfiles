@@ -56,29 +56,34 @@ class Image:
         return val
 
     def purls(self, index_digest: Optional[str] = None) -> list[str]:
-        ans = []
-        if index_digest and self.arch:
-            ans.append(
-                PackageURL(
-                    type="oci",
-                    name=self.name,
-                    version=index_digest,
-                    qualifiers={"arch": self.arch, "repository_url": self.repository},
-                ).to_string()
-            )
-        ans.append(
-            PackageURL(
-                type="oci",
-                name=self.name,
-                version=self.digest,
-                qualifiers={"repository_url": self.repository},
-            ).to_string()
-        )
-        return ans
+        purl = PackageURL(
+            type="oci",
+            name=self.name,
+            version=index_digest,
+            qualifiers={"arch": self.arch, "repository_url": self.repository},
+        ).to_string()
+
+        # HACK: There's a bug in PackageURL python that incorrectly handles
+        # encoding of ':' characters.  When this PR is merged, the hack should be
+        # removed: https://github.com/package-url/packageurl-python/pull/178
+        return [self._hack_purl_encoding(purl)]
 
     def propose_spdx_id(self) -> str:
         purl_hex_digest = hashlib.sha256(self.purls()[0].encode()).hexdigest()
         return f"SPDXRef-image-{self.name}-{purl_hex_digest}"
+
+    def _hack_purl_encoding(purl: str) -> str:
+        """
+        Encode ':' characters in PURL that are not the scheme and type separator.
+        """
+        if purl.count(":") == 1:
+            return purl
+
+        first_idx = purl.find(":")
+        after_first = purl[first_idx + 1 :]
+        after_first = after_first.replace(":", "%3A")
+
+        return f"{purl[:first_idx]}:{after_first}"
 
 
 def create_package(image: Image, spdxid: Optional[str] = None, image_index_digest: Optional[str] = None) -> dict:
