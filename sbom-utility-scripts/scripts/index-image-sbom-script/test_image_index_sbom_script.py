@@ -118,11 +118,6 @@ from index_image_sbom_script import create_sbom, main
                                 "referenceType": "purl",
                                 "referenceLocator": "pkg:oci/ubi9-micro-container@sha256:1c8483e0fda0e990175eb9855a5f15e0910d2038dd397d9e2b357630f0321e6d?arch=ppc64le&repository_url=quay.io/ubi9-micro-container",
                             },
-                            {
-                                "referenceCategory": "PACKAGE-MANAGER",
-                                "referenceType": "purl",
-                                "referenceLocator": "pkg:oci/ubi9-micro-container@sha256:f08722139c4da653b870272a192fac700960a3315baa1f79f83a4712a436d4?repository_url=quay.io/ubi9-micro-container",
-                            },
                         ],
                         "checksums": [
                             {
@@ -250,11 +245,6 @@ def test_main(
                             "referenceCategory": "PACKAGE-MANAGER",
                             "referenceType": "purl",
                             "referenceLocator": "pkg:oci/bar@sha256:456?arch=arm64&repository_url=quay.io/foo/bar",
-                        },
-                        {
-                            "referenceCategory": "PACKAGE-MANAGER",
-                            "referenceType": "purl",
-                            "referenceLocator": "pkg:oci/bar@sha256:123?repository_url=quay.io/foo/bar",
                         },
                     ],
                     "checksums": [{"algorithm": "SHA256", "checksumValue": "123"}],
