@@ -29,7 +29,7 @@ cd "$WORKDIR"
 
 banner "Running inject-icm.sh with a $TEST_SBOM_FORMAT SBOM"
 cp "$SCRIPTDIR/test-data/sbom-cachi2-$TEST_SBOM_FORMAT.json" ./sbom-cachi2.json
-bash "$SCRIPTDIR/inject-icm.sh" "$TEST_IMAGE"
+bash "$SCRIPTDIR/inject-icm.sh" "$TEST_IMAGE" "/tmp"
 
 expect_icm=$(jq -n '{
   "metadata": {
