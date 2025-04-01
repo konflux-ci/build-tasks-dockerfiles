@@ -44,7 +44,7 @@ ARCHIVE_MIMETYPES = (
     "application/zip",
 )
 
-MAX_RETRIES: Final = 5
+MAX_RETRIES: Final = 10
 
 StrPath = str | os.PathLike
 
