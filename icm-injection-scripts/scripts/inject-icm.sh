@@ -15,6 +15,7 @@
 set -euo pipefail
 
 IMAGE="${1}"
+MOUNT_PATH="${2}"
 SQUASH="${SQUASH:-false}"
 
 icm_filename="content-sets.json"
@@ -69,7 +70,15 @@ done <<< "$(
 echo "Constructed the following:"
 cat content-sets.json
 
-echo "Writing that to $location"
+echo "Checking to see if the content-sets.json file exists in ${location}"
+status=0
+diff -EZbB "${MOUNT_PATH}/${location}" content-sets.json || status=$?
+if [ "$status" -eq 0 ]; then
+  echo "content-sets.json already exists in container and it matches. Skipping injection."
+  exit 0
+fi
+
+echo "No matching content-sets.json found at $location. Adding file into the image."
 buildah copy "$CONTAINER" content-sets.json /usr/share/buildinfo/
 buildah config -a "org.opencontainers.image.base.name=${base_image_name}" -a "org.opencontainers.image.base.digest=${base_image_digest}" "$CONTAINER"
 
