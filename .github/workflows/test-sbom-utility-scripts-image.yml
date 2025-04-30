@@ -57,9 +57,3 @@ jobs:
         python3 -m pip install tox
         cd ./sbom-utility-scripts/scripts/sbom-for-oci-copy-task/
         tox
-
-    - name: Run tox checks for contextual-sbom
-      run: |
-        python3 -m pip install tox
-        cd ./sbom-utility-scripts/scripts/sbom-for-oci-copy-task/
-        tox

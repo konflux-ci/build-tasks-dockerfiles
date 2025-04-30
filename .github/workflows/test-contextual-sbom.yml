@@ -1,0 +1,35 @@
+name: Test contextual sbom script
+
+on:
+  push:
+    branches:
+      - main
+      - feature-contextual-sboms
+    paths:
+      - .github/workflows/test-sbom-utility-scripts-image.yml
+      - sbom-utility-scripts/**
+
+  pull_request:
+    branches:
+      - main
+      - feature-contextual-sboms
+    paths:
+      - .github/workflows/test-sbom-utility-scripts-image.yml
+      - sbom-utility-scripts/**
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: Run tox checks for contextual-sbom
+        run: |
+          python3 -m pip install tox
+          cd ./sbom-utility-scripts/scripts/contextual-sbom/
+          tox
