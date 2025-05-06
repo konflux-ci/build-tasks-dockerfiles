@@ -21,6 +21,9 @@ COPY scripts/sbom-for-oci-copy-task/requirements.txt /scripts/sbom-for-oci-copy-
 COPY scripts/sbom-for-modelcar-task/sbom_for_modelcar_task.py /scripts
 COPY scripts/sbom-for-modelcar-task/requirements.txt /scripts/sbom-for-modelcar-task-requirements.txt
 
+COPY scripts/contextual-sbom/create_contextual_sbom.py /scripts
+COPY scripts/contextual-sbom/requirements.txt /scripts/contextual-sbom-requirements.txt
+
 
 RUN pip3 install --no-cache-dir \
     -r merge-sboms-script-requirements.txt \
@@ -29,3 +32,4 @@ RUN pip3 install --no-cache-dir \
     -r add-image-reference-requirements.txt \
     -r sbom-for-oci-copy-task-requirements.txt \
     -r sbom-for-modelcar-task-requirements.txt \
+    -r contextual-sbom-requirements.txt \
