@@ -23,6 +23,8 @@ ARCH_TRANSLATION = {
     "s390x": {"s390"},
 }
 
+SBOM_FILE_PATH = Path("/shared/sbom-used-parent-image.json")
+
 
 class SBOMFormat(Enum):
     """Enum for SBOM formats."""
@@ -87,6 +89,30 @@ def load_json(path: Path) -> SBOM_DOC:
     """
     with open(path, "r") as json_file:
         return json.load(json_file)
+
+
+def save_json(json_doc: dict[str, Any], path: Path) -> bool:
+    """
+    Saves the json to a specified path.
+    Args:
+        json_doc:
+            The JSON doc to save.
+        path:
+            Location to save the json.
+
+    Returns:
+        `True` on success, `False` otherwise.
+    """
+    if not path.parent.is_dir():
+        LOGGER.info(f"Could not save file '{path.absolute()}', directory '{path.parent.absolute()}' does not exist.")
+        return False
+    try:
+        with open(path, "w") as write_file:
+            json.dump(json_doc, write_file)
+        return True
+    except OSError as e:
+        LOGGER.info(f"Could not save JSON to '{path.absolute()}', problem: {type(e)}, {e.args}")
+        return False
 
 
 def get_base_images(parsed_dockerfile: dict[str, Any]) -> list[str | None]:
@@ -202,10 +228,12 @@ def download_parent_image_sbom(pullspec: str | None, arch: str) -> SBOM_DOC | No
         LOGGER.debug("Not a multiarch image, trying without version...")
         cmd_result = subprocess.run(["/usr/bin/cosign", "download", "sbom", pullspec], capture_output=True)
     if not cmd_result.stdout:
-        LOGGER.debug("Could not locate SBOM.")
+        LOGGER.debug("Could not locate SBOM. Raw stderr output: " + cmd_result.stderr.decode())
         return None
     try:
-        return json.loads(cmd_result.stdout)
+        result = json.loads(cmd_result.stdout)
+        LOGGER.debug(f"Successfully downloaded parent SBOM for pullspec '{pullspec}'.")
+        return result
     except JSONDecodeError:
         LOGGER.warning(f"Invalid SBOM found, cannot parse JSON for pullspec '{pullspec}'.")
         return None
@@ -247,8 +275,9 @@ def use_contextual_sbom_creation(sbom_doc: SBOM_DOC | None) -> bool:
     if parent_image_sbom_format is SBOMFormat.SPDX2X:
         LOGGER.debug("Contextual mechanism will be used.")
         return True
-    LOGGER.debug("Contextual mechanism won't be used, parent SBOM is in CycloneDX format.")
-    return False
+    else:
+        LOGGER.debug("Contextual mechanism won't be used, parent SBOM is in CycloneDX format.")
+        return False
 
 
 def main():
@@ -268,6 +297,8 @@ def main():
     parent_image = get_parent_image_pullspec(parsed_dockerfile, target_stage, base_images)
     arch = identify_arch()
     sbom = download_parent_image_sbom(parent_image, arch)
+    if sbom and not save_json(sbom, SBOM_FILE_PATH):
+        exit(1)
     use_contextual = use_contextual_sbom_creation(sbom)
     print(use_contextual)  # Remove this print after this value has a use case
 
