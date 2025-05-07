@@ -1,4 +1,10 @@
+FROM ghcr.io/sigstore/cosign/cosign:v2.5.0 as cosign-bin
+# Install cosign command, reference:
+# https://github.com/sigstore/cosign?tab=readme-ov-file
+
 FROM registry.access.redhat.com/ubi9/python-312:9.5-1739191330@sha256:4b4a9f1208c49ecb274647e65f1e4544621f13ebbce31a743775bbd57f583529
+
+COPY --from=cosign-bin /ko-app/cosign /usr/bin/cosign
 
 WORKDIR /scripts
 
