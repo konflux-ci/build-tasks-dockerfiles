@@ -209,8 +209,7 @@ def parse_cli_args():
         "--registry-allowlist",
         type=arg_type_registry_allowlist,
         required=True,
-        help="Resolve source images for parent images pulled from the registry listed here. "
-        "One registry per line.",
+        help="Resolve source images for parent images pulled from the registry listed here. " "One registry per line.",
     )
     parser.add_argument(
         "--ignore-unsigned-image",
@@ -305,8 +304,7 @@ def skopeo_copy(
         run(cmd, stderr=subprocess.PIPE, check=True)
     except CalledProcessError as e:
         is_missing_signatures = (
-            "Source image rejected: A signature was required, but no signature exists"
-            in e.stderr.decode()
+            "Source image rejected: A signature was required, but no signature exists" in e.stderr.decode()
         )
         if is_missing_signatures:
             raise NoSignatureError(e.stderr.decode())
@@ -328,9 +326,7 @@ def create_dir(*components) -> str:
     return path
 
 
-def gather_prefetched_sources(
-    work_dir: str, cachi2_dir: str, sib_dirs: SourceImageBuildDirectories
-) -> bool:
+def gather_prefetched_sources(work_dir: str, cachi2_dir: str, sib_dirs: SourceImageBuildDirectories) -> bool:
     log = logging.getLogger("source-build.prefetched-sources")
     gathered = False
 
@@ -344,9 +340,7 @@ def gather_prefetched_sources(
         return gathered
 
     def _find_prefetch_source_archives() -> Dict[str, str]:
-        used_package_managers = (
-            os.listdir(cachi2_deps_dir) if os.path.exists(cachi2_deps_dir) else []
-        )
+        used_package_managers = os.listdir(cachi2_deps_dir) if os.path.exists(cachi2_deps_dir) else []
         guess_mime = filetype.guess_mime
         prefetched_sources = defaultdict(list)
 
@@ -379,9 +373,7 @@ def gather_prefetched_sources(
         copy_dest_dir = f"{prepared_sources_dir}/{src_dir}/deps/{package_manager}"
 
         for src_filepath in filepaths:
-            relative_path_to_src = os.path.relpath(
-                src_filepath, f"{cachi2_deps_dir}/{package_manager}"
-            )
+            relative_path_to_src = os.path.relpath(src_filepath, f"{cachi2_deps_dir}/{package_manager}")
             dest_dirs = os.path.join(copy_dest_dir, os.path.dirname(relative_path_to_src))
             os.makedirs(dest_dirs, exist_ok=True)
             dest = f"{copy_dest_dir}/{relative_path_to_src}"
@@ -422,9 +414,7 @@ def gather_prefetched_sources(
     return gathered
 
 
-def make_source_archive(
-    work_dir: str, source_dir: str, sib_dirs: SourceImageBuildDirectories
-) -> None:
+def make_source_archive(work_dir: str, source_dir: str, sib_dirs: SourceImageBuildDirectories) -> None:
     log = logging.getLogger("build-source.source-archive")
     source_archive_dir = create_dir(work_dir, "source_archive")
     repo_info = get_repo_info(source_dir)
@@ -466,9 +456,7 @@ def make_source_archive(
     sib_dirs.extra_src_dirs.append(source_archive_dir)
 
 
-def build_source_image_in_local(
-    bsi_script: str, work_dir: str, sib_dirs: SourceImageBuildDirectories
-) -> str:
+def build_source_image_in_local(bsi_script: str, work_dir: str, sib_dirs: SourceImageBuildDirectories) -> str:
     bsi_build_base_dir = create_dir(work_dir, "bsi_build")
     image_output_dir = create_dir(work_dir, "bsi_output")
 
@@ -586,9 +574,7 @@ def parse_image_name(image: str) -> ImageRef:
     return ImageRef(repo=name, tag=tag, digest=digest)
 
 
-def download_parent_image_sources(
-    source_image: str, work_dir: str, ignore_unsigned_image: bool = False
-) -> str:
+def download_parent_image_sources(source_image: str, work_dir: str, ignore_unsigned_image: bool = False) -> str:
     """Download parent sources that stored in OCI image layout
 
     :return: the directory holding the downloaded sources in the OCI image layout.
@@ -969,11 +955,7 @@ class BSILayer:
         """
         dirname, basename = os.path.split(member.name)
         regex: Final = r"^extra-src-[0-9a-f]+\.tar$"
-        return (
-            member.issym()
-            and dirname == "./extra_src_dir"
-            and re.match(regex, basename) is not None
-        )
+        return member.issym() and dirname == "./extra_src_dir" and re.match(regex, basename) is not None
 
     @staticmethod
     def is_rpm_src(member: TarInfo) -> bool:
@@ -1022,13 +1004,9 @@ class BSILayer:
             raise ValueError(f"{err_prefix} No blob member is found.")
 
         dir_name, _ = os.path.split(self.symlink_member.name)
-        normalized_link_path = os.path.normpath(
-            os.path.join(dir_name, self.symlink_member.linkname)
-        )
+        normalized_link_path = os.path.normpath(os.path.join(dir_name, self.symlink_member.linkname))
         if normalized_link_path != os.path.normpath(self.blob_member.name):
-            raise ValueError(
-                f"{err_prefix} Symlink {self.symlink_member.name} does not link to the blob."
-            )
+            raise ValueError(f"{err_prefix} Symlink {self.symlink_member.name} does not link to the blob.")
 
     def hash_key(self):
         if self.extra_source:
@@ -1118,8 +1096,7 @@ def deduplicate_sources(parent_sources_dir: StrPath, image_output_dir: StrPath) 
             continue
         d, diff_id, history = local_build_manifest.remove_layer(local_build_layer)
         logger.debug(
-            "parent sources include source %r, remove it from local source build. "
-            "diff_id: %s, history: %r",
+            "parent sources include source %r, remove it from local source build. " "diff_id: %s, history: %r",
             d,
             diff_id,
             history,
@@ -1161,9 +1138,7 @@ def build(args) -> BuildResult:
 
         source_image = resolve_source_image(base_image, args.registry_allowlist)
         if source_image:
-            parent_sources_dir = download_parent_image_sources(
-                source_image, work_dir, args.ignore_unsigned_image
-            )
+            parent_sources_dir = download_parent_image_sources(source_image, work_dir, args.ignore_unsigned_image)
         else:
             logger.info("Source image is not resolved for image %s", base_image)
     else:
@@ -1173,9 +1148,7 @@ def build(args) -> BuildResult:
         included = gather_prefetched_sources(work_dir, args.cachi2_artifacts_dir, sib_dirs)
         build_result["dependencies_included"] = included
     else:
-        logger.info(
-            "Cachi2 artifacts directory is not specified. Skip handling the prefetched sources."
-        )
+        logger.info("Cachi2 artifacts directory is not specified. Skip handling the prefetched sources.")
 
     image_output_dir = build_source_image_in_local(args.bsi, work_dir, sib_dirs)
     if parent_sources_dir:
@@ -1216,9 +1189,7 @@ def main() -> int:
     except Exception as e:
         build_result = {"status": "failure", "message": str(e)}
         if isinstance(e, CalledProcessError):
-            logger.exception(
-                "command execution failure, status: %d, stderr: %s", e.returncode, e.stderr
-            )
+            logger.exception("command execution failure, status: %d, stderr: %s", e.returncode, e.stderr)
         else:
             logger.exception("failed to build source image")
 
