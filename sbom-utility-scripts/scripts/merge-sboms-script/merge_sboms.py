@@ -283,18 +283,18 @@ def _merge_tools_metadata(sbom_a: dict[Any, Any], sbom_b: dict[Any, Any]) -> Non
 type MergeComponentsFunc[T: SBOMItem] = Callable[[Sequence[T], Sequence[T]], list[dict[str, Any]]]
 
 
-def merge_by_prefering_cachi2[T: SBOMItem](
-    syft_components: Sequence[T], cachi2_components: Sequence[T]
-) -> list[dict[str, Any]]:
+def merge_by_prefering_cachi2[
+    T: SBOMItem
+](syft_components: Sequence[T], cachi2_components: Sequence[T]) -> list[dict[str, Any]]:
     is_duplicate_component = _get_syft_component_filter(cachi2_components)
     merged = [c for c in syft_components if not is_duplicate_component(c)]
     merged += cachi2_components
     return [c.unwrap() for c in merged]
 
 
-def merge_by_apparent_sameness[T: SBOMItem](
-    components_a: Sequence[T], components_b: Sequence[T]
-) -> list[dict[str, Any]]:
+def merge_by_apparent_sameness[
+    T: SBOMItem
+](components_a: Sequence[T], components_b: Sequence[T]) -> list[dict[str, Any]]:
     def key(component: SBOMItem) -> str:
         purl = component.purl()
         if purl:
