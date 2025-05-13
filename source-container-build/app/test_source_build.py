@@ -282,9 +282,7 @@ class TestMakeSourceArchive(unittest.TestCase):
 
     def test_git_process_fail(self):
         with self.assertRaises(CalledProcessError):
-            source_build.make_source_archive(
-                self.work_dir, self.invalid_source_dir, SourceImageBuildDirectories()
-            )
+            source_build.make_source_archive(self.work_dir, self.invalid_source_dir, SourceImageBuildDirectories())
 
 
 class TestBuildSourceInLocal(unittest.TestCase):
@@ -478,11 +476,7 @@ class TestGatherPrefetchedSources(unittest.TestCase):
         self.assertTrue(result)
 
         def _has_known_file_ext(filename: str) -> bool:
-            return (
-                filename.endswith(".tar.gz")
-                or filename.endswith(".tgz")
-                or filename.endswith(".zip")
-            )
+            return filename.endswith(".tar.gz") or filename.endswith(".tgz") or filename.endswith(".zip")
 
         # Remove the noise introduced by test on gomod package manager
         deps_with_known_file_ext = [item for item in fetched_deps if _has_known_file_ext(item)]
@@ -565,9 +559,7 @@ class TestGatherPrefetchedSources(unittest.TestCase):
             "output/x86_64/fedora/gpm-libs-1.20.7-42.fc38.x86_64.rpm": os.urandom(4),
         }
 
-        self._test_gather_srpm_deps(
-            srpm_deps, ["gpm-1.20.7-42.fc38.src.rpm", "vim-9.1.113-1.fc38.src.rpm"]
-        )
+        self._test_gather_srpm_deps(srpm_deps, ["gpm-1.20.7-42.fc38.src.rpm", "vim-9.1.113-1.fc38.src.rpm"])
 
     def test_gather_srpm_deps_collision_same_content(self):
         srpm_deps = {
@@ -582,9 +574,7 @@ class TestGatherPrefetchedSources(unittest.TestCase):
             "output/x86_64/fedora/gpm-libs-1.20.7-42.fc38.x86_64.rpm": os.urandom(4),
         }
 
-        self._test_gather_srpm_deps(
-            srpm_deps, ["gpm-1.20.7-42.fc38.src.rpm", "vim-9.1.113-1.fc38.src.rpm"]
-        )
+        self._test_gather_srpm_deps(srpm_deps, ["gpm-1.20.7-42.fc38.src.rpm", "vim-9.1.113-1.fc38.src.rpm"])
 
     def test_gather_srpm_deps_collision_unique_content(self):
         srpm_deps = {
@@ -604,8 +594,7 @@ class TestGatherPrefetchedSources(unittest.TestCase):
             [
                 "gpm-1.20.7-42.fc38.src.rpm",
                 "vim-9.1.113-1.fc38.src.rpm",
-                "66ab0431683e4f376291ebd90d9f1f5e579063"
-                + "e185e77f7260c341d5d3c77ff8-vim-9.1.113-1.fc38.src.rpm",
+                "66ab0431683e4f376291ebd90d9f1f5e579063" + "e185e77f7260c341d5d3c77ff8-vim-9.1.113-1.fc38.src.rpm",
             ],
         )
 
@@ -723,9 +712,7 @@ class TestBuildProcess(unittest.TestCase):
                 rc = source_build.main()
 
         self.assertEqual(1, rc)
-        self.assertRegex(
-            "\n".join(logs.output), r"command execution failure, status: \d+, stderr: .+"
-        )
+        self.assertRegex("\n".join(logs.output), r"command execution failure, status: \d+, stderr: .+")
 
         with open(self.result_file, "r") as f:
             build_result: BuildResult = json.loads(f.read())
@@ -805,9 +792,7 @@ class TestBuildProcess(unittest.TestCase):
                 case ["skopeo", "inspect", "--config", *_]:
                     if parent_images:
                         dest_image = cmd[-1]
-                        self.assertNotIn(
-                            ":9.3-1", dest_image, "tag is not removed from image pullspec"
-                        )
+                        self.assertNotIn(":9.3-1", dest_image, "tag is not removed from image pullspec")
 
                     # Get image config
                     if source_image_is_resolved_by_version_release:
@@ -929,9 +914,7 @@ class TestBuildProcess(unittest.TestCase):
         with open(self.result_file, "r") as f:
             build_result = json.loads(f.read())
 
-        self.assertEqual(
-            expect_parent_image_sources_included, build_result["base_image_source_included"]
-        )
+        self.assertEqual(expect_parent_image_sources_included, build_result["base_image_source_included"])
         self.assertEqual(include_prefetched_sources, build_result["dependencies_included"])
 
         if binary_image_does_not_exist_any_more:
@@ -1007,9 +990,7 @@ class TestBuildProcess(unittest.TestCase):
             localhost/konflux-final-image@sha256:123
             """
         )
-        self._test_include_sources(
-            parent_images=parent_images, expect_parent_image_sources_included=False
-        )
+        self._test_include_sources(parent_images=parent_images, expect_parent_image_sources_included=False)
 
     @patch("source_build.run")
     def test_create_a_temp_dir_as_workspace(self, run):
@@ -1155,9 +1136,7 @@ class TestResolveSourceImageByVersionRelease(unittest.TestCase):
     @patch("source_build.run")
     def test_image_does_not_have_source_image(self, run: MagicMock):
         skopeo_inspect_config_rv = Mock()
-        skopeo_inspect_config_rv.stdout = json.dumps(
-            {"config": {"Labels": {"version": "9.3", "release": "1"}}}
-        )
+        skopeo_inspect_config_rv.stdout = json.dumps({"config": {"Labels": {"version": "9.3", "release": "1"}}})
         run.side_effect = [skopeo_inspect_config_rv, self.called_proc_err]
 
         result = source_build.resolve_source_image_by_version_release(BINARY_IMAGE_REF)
@@ -1166,9 +1145,7 @@ class TestResolveSourceImageByVersionRelease(unittest.TestCase):
     @patch("source_build.run")
     def test_source_image_is_resolved(self, run: MagicMock):
         skopeo_inspect_config_rv = Mock()
-        skopeo_inspect_config_rv.stdout = json.dumps(
-            {"config": {"Labels": {"version": "9.3", "release": "1"}}}
-        )
+        skopeo_inspect_config_rv.stdout = json.dumps({"config": {"Labels": {"version": "9.3", "release": "1"}}})
         skopeo_inspect_raw_rv = Mock()
         skopeo_inspect_raw_rv.returncode = 0
         run.side_effect = [skopeo_inspect_config_rv, skopeo_inspect_raw_rv]
@@ -1271,8 +1248,7 @@ class TestDeduplicateSources(unittest.TestCase):
 
         expected = sorted(["libxml2-2.3-10.src.rpm", "pcre2-10.40-2.el9.src.rpm"])
         remains_in_local_build: Final = sorted(
-            os.path.basename(BSILayer(layer).symlink_member.name)
-            for layer in local_source_manifest.layers
+            os.path.basename(BSILayer(layer).symlink_member.name) for layer in local_source_manifest.layers
         )
         self.assertListEqual(expected, remains_in_local_build)
 

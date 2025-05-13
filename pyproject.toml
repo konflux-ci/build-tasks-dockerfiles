@@ -1,0 +1,9 @@
+# NOTE: this pyproject.toml is only defined in the repository because it's the only official
+# default configuration file for black [1] that the tool walks the directory hierarchy upwards
+# automatically (until it finds .git|.hg) without us having to specify a config file manually
+# (twice) and since there are at least 5 Python "sub-packages" in this repository, the black
+# settings should be uniform given it's tested by tox.
+#
+# [1] https://black.readthedocs.io/en/stable/usage_and_configuration/the_basics.html#configuration-via-a-file
+[tool.black]
+line_length = 120
