@@ -156,16 +156,12 @@ class TestManifest(unittest.TestCase):
 
         parent_image_layer = parent_image_layers[1]
         digest = parent_image_layer.descriptor["digest"]
-        shutil.copyfile(
-            parent_image_layer.path, Path(self.oci_image_path, "blobs", *digest.split(":"))
-        )
+        shutil.copyfile(parent_image_layer.path, Path(self.oci_image_path, "blobs", *digest.split(":")))
         self.manifest.prepend_layer(parent_image_layer)
 
         parent_image_layer = parent_image_layers[0]
         digest = parent_image_layer.descriptor["digest"]
-        shutil.copyfile(
-            parent_image_layer.path, Path(self.oci_image_path, "blobs", *digest.split(":"))
-        )
+        shutil.copyfile(parent_image_layer.path, Path(self.oci_image_path, "blobs", *digest.split(":")))
         self.manifest.prepend_layer(parent_image_layer)
 
         new_manifest = self.manifest.save()
@@ -182,9 +178,7 @@ class TestManifest(unittest.TestCase):
         layer.raw_content += b"101010"
         new_layer = layer.save()
         digest = new_layer.descriptor["digest"]
-        with self.assertRaisesRegex(
-            ValueError, expected_regex=f"Layer with digest {digest} does not exist"
-        ):
+        with self.assertRaisesRegex(ValueError, expected_regex=f"Layer with digest {digest} does not exist"):
             self.manifest.remove_layer(new_layer)
 
     def test_remove_layer(self):
@@ -199,9 +193,7 @@ class TestIndex(unittest.TestCase):
 
     def setUp(self):
         self.oci_image_path = tempfile.mkdtemp(prefix="test-index-")
-        create_simple_oci_image(
-            self.oci_image_path, [("libxml2-0.2-1.el9.src.rpm", b"0101", "rpm_dir")]
-        )
+        create_simple_oci_image(self.oci_image_path, [("libxml2-0.2-1.el9.src.rpm", b"0101", "rpm_dir")])
         self.oci_image = OCIImage(self.oci_image_path)
 
     def tearDown(self):
@@ -295,9 +287,7 @@ class TestBSILayer(unittest.TestCase):
         return Layer(oci_image, layer_d)
 
     def test_get_symlink_and_blob_members_via_property(self):
-        archive = create_layer_archive(
-            self.SRPM_NAME, self.SRPM_CONTENT, "rpm_dir", work_dir=self.work_dir
-        )
+        archive = create_layer_archive(self.SRPM_NAME, self.SRPM_CONTENT, "rpm_dir", work_dir=self.work_dir)
         layer = self._create_a_layer(archive)
         bsi_layer = BSILayer(layer)
 
@@ -306,9 +296,7 @@ class TestBSILayer(unittest.TestCase):
         self.assertEqual(bsi_layer.blob_member.name, f"./blobs/sha256/{checksum}")
 
     def test__eq___type_mismatch(self):
-        archive = create_layer_archive(
-            self.SRPM_NAME, self.SRPM_CONTENT, "rpm_dir", work_dir=self.work_dir
-        )
+        archive = create_layer_archive(self.SRPM_NAME, self.SRPM_CONTENT, "rpm_dir", work_dir=self.work_dir)
         layer = self._create_a_layer(archive)
         bsi_layer = BSILayer(layer)
 
