@@ -6,14 +6,14 @@ set -o errexit -o nounset -o pipefail -o xtrace
 # - spdx/**
 #
 # Hopefully you won't need to run this script again, but if you do, you need:
-# - cachi2 (https://github.com/containerbuildsystem/cachi2/blob/main/CONTRIBUTING.md#virtual-environment)
+# - hermeto (https://github.com/containerbuildsystem/hermeto/blob/main/CONTRIBUTING.md#virtual-environment)
 # - syft (https://github.com/anchore/syft/releases)
 #   - preferably at the version used by the tasks in https://github.com/konflux-ci/build-definitions
 #
-# It will generate cachi2 and syft SBOMs for a few sample repositories (and one
-# container image, for syft) and assemble them into a merged cachi2 SBOM and a
+# It will generate hermeto and syft SBOMs for a few sample repositories (and one
+# container image, for syft) and assemble them into a merged hermeto SBOM and a
 # merged syft SBOM. You can then test the merge_sboms.py script by merging
-# the cachi2 SBOM with the syft SBOM.
+# the hermeto SBOM with the syft SBOM.
 
 sbom_type=${1:-cyclonedx}
 
@@ -39,7 +39,7 @@ mkdir -p "$temp_workdir"
 trap 'rm -rf "$temp_workdir"' EXIT
 
 cd "$temp_workdir"
-mkdir cachi2-sboms
+mkdir hermeto-sboms
 mkdir syft-sboms
 
 git clone https://github.com/cachito-testing/gomod-pandemonium
@@ -48,12 +48,12 @@ git clone https://github.com/cachito-testing/gomod-pandemonium
 
     syft dir:. -o "$syft_sbom_type" > "$temp_workdir/syft-sboms/gomod-pandemonium.bom.json"
 
-    cachi2 fetch-deps --sbom-output-type "$sbom_type" '[
+    hermeto fetch-deps --sbom-output-type "$sbom_type" '[
         {"type": "gomod"},
         {"type": "gomod", "path": "terminaltor"},
         {"type": "gomod", "path": "weird"}
     ]'
-    cp cachi2-output/bom.json "../cachi2-sboms/gomod-pandemonium.bom.json"
+    cp hermeto-output/bom.json "../hermeto-sboms/gomod-pandemonium.bom.json"
 )
 
 git clone https://github.com/cachito-testing/pip-e2e-test
@@ -62,8 +62,8 @@ git clone https://github.com/cachito-testing/pip-e2e-test
 
     syft dir:. -o "$syft_sbom_type" > "$temp_workdir/syft-sboms/pip-e2e-test.bom.json"
 
-    cachi2 fetch-deps --sbom-output-type "$sbom_type" pip
-    cp cachi2-output/bom.json "$temp_workdir/cachi2-sboms/pip-e2e-test.bom.json"
+    hermeto fetch-deps --sbom-output-type "$sbom_type" pip
+    cp hermeto-output/bom.json "$temp_workdir/hermeto-sboms/pip-e2e-test.bom.json"
 )
 
 git clone https://github.com/cachito-testing/npm-cachi2-smoketest --branch lockfile-v3
@@ -72,8 +72,8 @@ git clone https://github.com/cachito-testing/npm-cachi2-smoketest --branch lockf
 
     syft dir:. -o "$syft_sbom_type" > "$temp_workdir/syft-sboms/npm-cachi2-smoketest.bom.json"
 
-    cachi2 fetch-deps --sbom-output-type "$sbom_type" npm
-    cp cachi2-output/bom.json "$temp_workdir/cachi2-sboms/npm-cachi2-smoketest.bom.json"
+    hermeto fetch-deps --sbom-output-type "$sbom_type" npm
+    cp hermeto-output/bom.json "$temp_workdir/hermeto-sboms/npm-cachi2-smoketest.bom.json"
 )
 
 ubi_micro=registry.access.redhat.com/ubi9/ubi-micro:9.5@sha256:a22fffe0256af00176c8b4f22eec5d8ecb1cb1684d811c33b1f2832fd573260f
@@ -82,17 +82,17 @@ syft image:"$ubi_micro" -o "$syft_sbom_type" > "$temp_workdir/syft-sboms/ubi-mic
 # postprocess_*: Some attributes change every time, e.g. timestamps or UUIDs.
 # Set them to hardcoded values to avoid unnecessary changes when re-running this script.
 
-postprocess_cachi2_cyclonedx() {
+postprocess_hermeto_cyclonedx() {
     jq --sort-keys
 }
 
-postprocess_cachi2_spdx() {
+postprocess_hermeto_spdx() {
     jq --sort-keys '
         .creationInfo.created = "2024-12-18T11:27:10Z" |
         .packages[].annotations[].annotationDate = "2024-12-18T11:27:10Z" |
         (.relationships |= sort)
     '
-    # TODO remove the relationships sorting if cachi2 fixes the random order
+    # TODO remove the relationships sorting if hermeto fixes the random order
 }
 
 postprocess_syft_cyclonedx() {
@@ -111,8 +111,8 @@ postprocess_syft_spdx() {
 
 mkdir -p "$testdata_dir/$sbom_type"
 
-cachi2 merge-sboms --sbom-output-type "$sbom_type" "$temp_workdir/cachi2-sboms"/* |
-    postprocess_cachi2_"$sbom_type" > "$testdata_dir/$sbom_type/cachi2.bom.json"
+hermeto merge-sboms --sbom-output-type "$sbom_type" "$temp_workdir/hermeto-sboms"/* |
+    postprocess_hermeto_"$sbom_type" > "$testdata_dir/$sbom_type/hermeto.bom.json"
 
 mkdir -p "$testdata_dir/$sbom_type/syft-sboms"
 for syft_sbom in ./syft-sboms/*; do
