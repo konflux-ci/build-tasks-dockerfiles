@@ -7,8 +7,8 @@
       "version": "2.39",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -19,11 +19,11 @@
       "version": "2.39",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         },
         {
-          "name": "cachi2:missing_hash:in_file",
+          "name": "hermeto:missing_hash:in_file",
           "value": "another-project/rpms.lock.yaml"
         }
       ],
@@ -35,8 +35,8 @@
       "version": "2.38",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -47,8 +47,8 @@
       "version": "2.39",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -59,8 +59,8 @@
       "version": "1.13",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -71,8 +71,8 @@
       "version": "1.6.1",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -83,8 +83,8 @@
       "version": "1.6.1",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -95,8 +95,8 @@
       "version": "1.6.1",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -107,8 +107,8 @@
       "version": "1.6.1",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -119,8 +119,8 @@
       "version": "1.6.3",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -131,8 +131,8 @@
       "version": "1.6.3",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -143,8 +143,8 @@
       "version": "2.4.37",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -155,8 +155,8 @@
       "version": "2.4.37",
       "properties": [
         {
-          "name": "cachi2:found_by",
-          "value": "cachi2"
+          "name": "hermeto:found_by",
+          "value": "hermeto"
         }
       ],
       "type": "library"
@@ -166,7 +166,7 @@
     "tools": [
       {
         "vendor": "red hat",
-        "name": "cachi2"
+        "name": "hermeto"
       }
     ]
   },

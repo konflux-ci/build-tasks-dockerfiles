@@ -6,7 +6,7 @@
   "documentNamespace": "NOASSERTION",
   "creationInfo": {
     "creators": [
-      "Tool: cachi2",
+      "Tool: hermeto",
       "Organization: red hat"
     ],
     "created": "2025-01-13T09:51:43Z"
@@ -33,10 +33,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -54,10 +54,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -75,10 +75,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -96,10 +96,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -117,10 +117,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -138,10 +138,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -159,10 +159,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -180,16 +180,16 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         },
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:missing_hash:in_file\", \"value\": \"another-project/rpms.lock.yaml\"}"
+          "comment": "{\"name\": \"hermeto:missing_hash:in_file\", \"value\": \"another-project/rpms.lock.yaml\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -207,10 +207,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -228,10 +228,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -249,10 +249,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -270,10 +270,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
@@ -291,10 +291,10 @@
       ],
       "annotations": [
         {
-          "annotator": "Tool: cachi2:jsonencoded",
+          "annotator": "Tool: hermeto:jsonencoded",
           "annotationDate": "2025-01-13T09:51:43Z",
           "annotationType": "OTHER",
-          "comment": "{\"name\": \"cachi2:found_by\", \"value\": \"cachi2\"}"
+          "comment": "{\"name\": \"hermeto:found_by\", \"value\": \"hermeto\"}"
         }
       ],
       "downloadLocation": "NOASSERTION"
