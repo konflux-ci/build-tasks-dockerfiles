@@ -52,7 +52,6 @@ spec:
               echo "SNAPSHOT: ${SNAPSHOT}"
               export SOURCE_BUILD_IMAGE=$(jq -r '.components[] | select(.name == "source-container-build") | .containerImage' <<< "$SNAPSHOT")
               export SBOM_UTILITY_SCRIPTS_IMAGE=$(jq -r '.components[] | select(.name == "sbom-utility-scripts") | .containerImage' <<< "$SNAPSHOT")
-              export ICM_INJECTION_SCRIPTS_IMAGE=$(jq -r '.components[] | select(.name == "icm-injection-scripts") | .containerImage' <<< $SNAPSHOT)
               git clone --branch main https://github.com/konflux-ci/e2e-tests.git
               cd e2e-tests/
               make setup-bundle-for-build-tasks-dockerfiles-group-build | tee cmd_output
