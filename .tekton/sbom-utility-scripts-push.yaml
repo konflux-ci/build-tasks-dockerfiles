@@ -6,12 +6,9 @@ metadata:
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" &&
-      (
-      "sbom-utility-scripts/***".pathChanged() ||
-      ".tekton/sbom-utility-scripts-push.yaml".pathChanged() ||
-      ".tekton/build-pipeline.yaml".pathChanged()
-      )
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+      == "main" && ( "sbom-utility-scripts/***".pathChanged() || ".tekton/sbom-utility-scripts-push.yaml".pathChanged()
+      || ".tekton/build-pipeline.yaml".pathChanged() )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: build-tasks-dockerfiles
@@ -38,7 +35,8 @@ spec:
     value: "true"
   pipelineRef:
     name: build-pipeline
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-sbom-utility-scripts
   workspaces:
   - name: git-auth
     secret:
