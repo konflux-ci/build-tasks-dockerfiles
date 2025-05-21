@@ -821,7 +821,10 @@ class TestBuildProcess(unittest.TestCase):
                         self.assertTrue(dest_image.endswith(source_tag))
 
                     # Indicate the source image of parent image exists
-                    return CompletedProcess(cmd, int(mock_nonexisting_source_image))
+                    if mock_nonexisting_source_image:
+                        raise CalledProcessError(-1, "mock cmd", stderr="manifest unknown".encode())
+                    else:
+                        return CompletedProcess(cmd, int(mock_nonexisting_source_image))
 
                 case ["skopeo", "inspect", "--format", *_]:
                     # Get image manifest
@@ -1104,6 +1107,13 @@ class TestBuildProcess(unittest.TestCase):
 class TestResolveSourceImageByVersionRelease(unittest.TestCase):
     """Test resolve_source_image_by_version_release"""
 
+    def setUp(self):
+        self.called_proc_err = CalledProcessError(
+            -1,
+            "mock cmd",
+            stderr="manifest unknown".encode(),
+        )
+
     @patch("source_build.run")
     def test_binary_image_has_no_version_or_release_label(self, run: MagicMock):
         tests = [{}, {"version": "9.3"}, {"release": "11"}]
@@ -1124,9 +1134,7 @@ class TestResolveSourceImageByVersionRelease(unittest.TestCase):
         skopeo_inspect_config_rv.stdout = json.dumps(
             {"config": {"Labels": {"version": "9.3", "release": "1"}}}
         )
-        skopeo_inspect_raw_rv = Mock()
-        skopeo_inspect_raw_rv.returncode = 1
-        run.side_effect = [skopeo_inspect_config_rv, skopeo_inspect_raw_rv]
+        run.side_effect = [skopeo_inspect_config_rv, self.called_proc_err]
 
         result = source_build.resolve_source_image_by_version_release(OUTPUT_BINARY_IMAGE)
         self.assertIsNone(result)
@@ -1257,6 +1265,13 @@ class TestDeduplicateSources(unittest.TestCase):
 class TestResolveSourceImageByManifest(unittest.TestCase):
     """Test resolve_source_image_by_manifest"""
 
+    def setUp(self):
+        self.called_proc_err = CalledProcessError(
+            -1,
+            "mock cmd",
+            stderr="manifest unknown".encode(),
+        )
+
     def test_source_image_is_resolved(self):
         manifest_digest: Final = "sha256:123456"
 
@@ -1286,8 +1301,7 @@ class TestResolveSourceImageByManifest(unittest.TestCase):
     def test_source_image_does_not_exist(self, mock_run: MagicMock):
         manifest_digest = "sha256:123456"
         skopeo_inspect_digest_rv = Mock(stdout=manifest_digest)
-        skopeo_inspect_raw_rv = Mock(returncode=1)
-        mock_run.side_effect = [skopeo_inspect_digest_rv, skopeo_inspect_raw_rv]
+        mock_run.side_effect = [skopeo_inspect_digest_rv, self.called_proc_err]
 
         source_image = source_build.resolve_source_image_by_manifest("registry.io:3000/ns/app:1.0")
 

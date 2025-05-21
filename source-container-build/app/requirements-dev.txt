@@ -5,6 +5,10 @@
 #    pip-compile --generate-hashes --output-file=requirements-dev.txt requirements-dev.in
 #
 
+backoff==2.2.1 \
+    --hash=sha256:03f829f5bb1923180821643f8753b0502c3b682293992485b0eef2807afa5cba \
+    --hash=sha256:63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8
+    # via -r requirements.txt
 coverage[toml]==7.7.1 \
     --hash=sha256:02fad4f8faa4153db76f9246bc95c1d99f054f4e0a884175bff9155cf4f856cb \
     --hash=sha256:092b134129a8bb940c08b2d9ceb4459af5fb3faea77888af63182e17d89e1cf1 \

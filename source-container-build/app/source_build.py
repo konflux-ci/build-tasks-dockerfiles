@@ -1,6 +1,7 @@
 #!/usr/bin/python3.11
 
 import argparse
+import backoff
 import subprocess
 import filetype
 import functools
@@ -46,6 +47,8 @@ ARCHIVE_MIMETYPES = (
 )
 
 MAX_RETRIES: Final = 5
+SUBPROCESS_BACKOFF_FACTOR: Final = 2
+SUBPROCESS_MAX_RETRIES: Final = 10
 
 StrPath = str | os.PathLike
 
@@ -179,16 +182,44 @@ def parse_cli_args():
     return parser.parse_args()
 
 
+@backoff.on_exception(
+    backoff.expo,
+    CalledProcessError,
+    factor=SUBPROCESS_BACKOFF_FACTOR,
+    max_tries=SUBPROCESS_MAX_RETRIES + 1,  # total tries is N retries + 1 initial attempt
+    jitter=None,
+)
 def registry_has_image(image: str) -> bool:
     cmd = ["skopeo", "inspect", "--raw", "--retry-times", str(MAX_RETRIES), f"docker://{image}"]
-    return run(cmd, capture_output=True).returncode == 0
+    try:
+        run(cmd, check=True, capture_output=True)
+        return True
+    except CalledProcessError as e:
+        image_not_exist = "manifest unknown" in e.stderr.decode()
+        if image_not_exist:
+            return False
+        raise
 
 
+@backoff.on_exception(
+    backoff.expo,
+    CalledProcessError,
+    factor=SUBPROCESS_BACKOFF_FACTOR,
+    max_tries=SUBPROCESS_MAX_RETRIES + 1,  # total tries is N retries + 1 initial attempt
+    jitter=None,
+)
 def fetch_image_config(image: str) -> str:
     cmd = ["skopeo", "inspect", "--config", "--retry-times", str(MAX_RETRIES), f"docker://{image}"]
     return run(cmd, check=True, text=True, capture_output=True).stdout.strip()
 
 
+@backoff.on_exception(
+    backoff.expo,
+    CalledProcessError,
+    factor=SUBPROCESS_BACKOFF_FACTOR,
+    max_tries=SUBPROCESS_MAX_RETRIES + 1,  # total tries is N retries + 1 initial attempt
+    jitter=None,
+)
 def fetch_image_manifest_digest(image: str) -> str:
     cmd = [
         "skopeo",
@@ -203,6 +234,13 @@ def fetch_image_manifest_digest(image: str) -> str:
     return run(cmd, check=True, text=True, capture_output=True).stdout.strip()
 
 
+@backoff.on_exception(
+    backoff.expo,
+    CalledProcessError,
+    factor=SUBPROCESS_BACKOFF_FACTOR,
+    max_tries=SUBPROCESS_MAX_RETRIES + 1,  # total tries is N retries + 1 initial attempt
+    jitter=None,
+)
 def skopeo_copy(
     src: str,
     dest: str,
