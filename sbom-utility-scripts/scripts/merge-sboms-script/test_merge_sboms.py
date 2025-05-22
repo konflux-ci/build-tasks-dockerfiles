@@ -29,14 +29,14 @@ TOOLS_METADATA = {
         "name": "syft",
         "version": "0.100.0",
     },
-    "cachi2-cyclonedx-1.4": {
-        "name": "cachi2",
+    "hermeto-cyclonedx-1.4": {
+        "name": "hermeto",
         "vendor": "red hat",
     },
-    "cachi2-cyclonedx-1.5": {
+    "hermeto-cyclonedx-1.5": {
         "type": "application",
         "author": "red hat",
-        "name": "cachi2",
+        "name": "hermeto",
     },
 }
 
@@ -181,13 +181,13 @@ def test_merge_n_syft_sboms(
 @pytest.mark.parametrize(
     "args",
     [
-        ["cachi2.bom.json", "syft.merged-by-us.bom.json"],
-        ["cachi2:cachi2.bom.json", "syft:syft.merged-by-us.bom.json"],
-        ["syft:syft.merged-by-us.bom.json", "cachi2:cachi2.bom.json"],
+        ["hermeto.bom.json", "syft.merged-by-us.bom.json"],
+        ["hermeto:hermeto.bom.json", "syft:syft.merged-by-us.bom.json"],
+        ["syft:syft.merged-by-us.bom.json", "hermeto:hermeto.bom.json"],
         [
-            "cachi2:cachi2.bom.json",
+            "hermeto:hermeto.bom.json",
             # merging these 4 should result in syft.merged-by-us.bom.json
-            # merging the result with the cachi2.bom.json should be the same as the cases above
+            # merging the result with the hermeto.bom.json should be the same as the cases above
             *INDIVIDUAL_SYFT_SBOMS,
         ],
     ],
@@ -260,7 +260,7 @@ def test_merge_n_syft_sboms(
         ),
     ],
 )
-def test_merge_cachi2_and_syft_sbom(
+def test_merge_hermeto_and_syft_sbom(
     args: list[str],
     sbom_type: str,
     should_take_from_syft: dict[str, int],
@@ -276,14 +276,14 @@ def test_merge_cachi2_and_syft_sbom(
 
     assert json.loads(result) == expected_sbom
 
-    with open("cachi2.bom.json") as f:
-        cachi2_sbom = json.load(f)
+    with open("hermeto.bom.json") as f:
+        hermeto_sbom = json.load(f)
 
-    taken_from_syft = diff_counts(count_components(expected_sbom), count_components(cachi2_sbom))
+    taken_from_syft = diff_counts(count_components(expected_sbom), count_components(hermeto_sbom))
     assert taken_from_syft == should_take_from_syft
 
     if sbom_type == "spdx":
-        relationships_from_syft = diff_counts(count_relationships(expected_sbom), count_relationships(cachi2_sbom))
+        relationships_from_syft = diff_counts(count_relationships(expected_sbom), count_relationships(hermeto_sbom))
         assert relationships_from_syft == {
             "SPDXRef-DOCUMENT DESCRIBES SPDXRef-DocumentRoot-Directory-.": 1,
             "SPDXRef-DOCUMENT DESCRIBES SPDXRef-DocumentRoot-Image-registry.access.redhat.com-ubi9-ubi-micro": 1,
@@ -299,9 +299,9 @@ def test_merge_cachi2_and_syft_sbom(
     [
         ["foo:x.json", "bar:y.json"],
         ["syft:x.json", "bar:y.json"],
-        ["cachi2:x.json", "cachi2:y.json"],
-        # invalid because left defaults to cachi2
-        ["x.json", "cachi2:y.json"],
+        ["hermeto:x.json", "hermeto:y.json"],
+        # invalid because left defaults to hermeto
+        ["x.json", "hermeto:y.json"],
     ],
 )
 def test_invalid_flavours_combination(
@@ -312,24 +312,24 @@ def test_invalid_flavours_combination(
 
 
 @pytest.mark.parametrize(
-    "syft_tools_metadata, cachi2_tools_metadata, expected_result",
+    "syft_tools_metadata, hermeto_tools_metadata, expected_result",
     [
         (
             [TOOLS_METADATA["syft-cyclonedx-1.4"]],
-            [TOOLS_METADATA["cachi2-cyclonedx-1.4"]],
+            [TOOLS_METADATA["hermeto-cyclonedx-1.4"]],
             [
                 TOOLS_METADATA["syft-cyclonedx-1.4"],
-                TOOLS_METADATA["cachi2-cyclonedx-1.4"],
+                TOOLS_METADATA["hermeto-cyclonedx-1.4"],
             ],
         ),
         (
             [TOOLS_METADATA["syft-cyclonedx-1.4"]],
             {
-                "components": [TOOLS_METADATA["cachi2-cyclonedx-1.5"]],
+                "components": [TOOLS_METADATA["hermeto-cyclonedx-1.5"]],
             },
             [
                 TOOLS_METADATA["syft-cyclonedx-1.4"],
-                TOOLS_METADATA["cachi2-cyclonedx-1.4"],
+                TOOLS_METADATA["hermeto-cyclonedx-1.4"],
             ],
         ),
         (
@@ -337,12 +337,12 @@ def test_invalid_flavours_combination(
                 "components": [TOOLS_METADATA["syft-cyclonedx-1.5"]],
             },
             {
-                "components": [TOOLS_METADATA["cachi2-cyclonedx-1.5"]],
+                "components": [TOOLS_METADATA["hermeto-cyclonedx-1.5"]],
             },
             {
                 "components": [
                     TOOLS_METADATA["syft-cyclonedx-1.5"],
-                    TOOLS_METADATA["cachi2-cyclonedx-1.5"],
+                    TOOLS_METADATA["hermeto-cyclonedx-1.5"],
                 ],
             },
         ),
@@ -350,17 +350,17 @@ def test_invalid_flavours_combination(
             {
                 "components": [TOOLS_METADATA["syft-cyclonedx-1.5"]],
             },
-            [TOOLS_METADATA["cachi2-cyclonedx-1.4"]],
+            [TOOLS_METADATA["hermeto-cyclonedx-1.4"]],
             {
                 "components": [
                     TOOLS_METADATA["syft-cyclonedx-1.5"],
-                    TOOLS_METADATA["cachi2-cyclonedx-1.5"],
+                    TOOLS_METADATA["hermeto-cyclonedx-1.5"],
                 ],
             },
         ),
     ],
 )
-def test_merging_tools_metadata(syft_tools_metadata: Any, cachi2_tools_metadata: Any, expected_result: Any) -> None:
+def test_merging_tools_metadata(syft_tools_metadata: Any, hermeto_tools_metadata: Any, expected_result: Any) -> None:
     syft_sbom = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
@@ -370,16 +370,16 @@ def test_merging_tools_metadata(syft_tools_metadata: Any, cachi2_tools_metadata:
         "components": [],
     }
 
-    cachi2_sbom = {
+    hermeto_sbom = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.4",
         "metadata": {
-            "tools": cachi2_tools_metadata,
+            "tools": hermeto_tools_metadata,
         },
         "components": [],
     }
 
-    result = merge_cyclonedx_sboms(syft_sbom, cachi2_sbom, merge_by_apparent_sameness)
+    result = merge_cyclonedx_sboms(syft_sbom, hermeto_sbom, merge_by_apparent_sameness)
 
     assert result["metadata"]["tools"] == expected_result
 
@@ -394,14 +394,14 @@ def test_invalid_tools_format() -> None:
         "components": [],
     }
 
-    cachi2_sbom = {
+    hermeto_sbom = {
         "bomFormat": "CycloneDX",
         "specVersion": "1.4",
         "metadata": {
-            "tools": [TOOLS_METADATA["cachi2-cyclonedx-1.4"]],
+            "tools": [TOOLS_METADATA["hermeto-cyclonedx-1.4"]],
         },
         "components": [],
     }
 
     with pytest.raises(RuntimeError):
-        merge_cyclonedx_sboms(syft_sbom, cachi2_sbom, merge_by_apparent_sameness)
+        merge_cyclonedx_sboms(syft_sbom, hermeto_sbom, merge_by_apparent_sameness)

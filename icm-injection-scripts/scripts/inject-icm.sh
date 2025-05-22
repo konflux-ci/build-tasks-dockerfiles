@@ -22,8 +22,8 @@ icm_filename="content-sets.json"
 # with bootc/ostree systems. Ref https://issues.redhat.com/browse/KONFLUX-6844
 location="/usr/share/buildinfo/${icm_filename}"
 
-if [ ! -f "./sbom-cachi2.json" ]; then
-  echo "Could not find sbom-cachi2.json. No content_sets found for ICM"
+if [ ! -f "./sbom-prefetch.json" ]; then
+  echo "Could not find sbom-prefetch.json. No content_sets found for ICM"
   exit 0
 fi
 
@@ -61,7 +61,7 @@ done <<< "$(
             .components[].purl
         else
             .packages[].externalRefs[]? | select(.referenceType == "purl") | .referenceLocator
-        end' sbom-cachi2.json |
+        end' sbom-prefetch.json |
     grep -o -P '(?<=repository_id=).*(?=(&|$))' |
     sort -u
 )"
