@@ -37,6 +37,18 @@ def spdx_parent_sbom_bytes() -> bytes:
 
 
 @pytest.fixture(scope="session")
+def inspected_parent_multiarch() -> bytes:
+    with open("test_data/fake_image_inspect/inspect_multiarch.json", "rb") as inspect_file:
+        return inspect_file.read()
+
+
+@pytest.fixture(scope="session")
+def inspected_parent_singlearch() -> bytes:
+    with open("test_data/fake_image_inspect/inspect_singlearch.json", "rb") as inspect_file:
+        return inspect_file.read()
+
+
+@pytest.fixture(scope="session")
 def cdx_parent_sbom_bytes() -> bytes:
     with open("test_data/fake_parent_sbom/parent_sbom.cdx.json", "rb") as sbom_file:
         return sbom_file.read()
@@ -123,7 +135,47 @@ def test_use_contextual_sbom_creation_sbom_is_none():
 
 
 @patch("create_contextual_sbom.subprocess")
-def test_download_parent_image_sbom(mock_subprocess: MagicMock, spdx_parent_sbom_bytes: bytes):
-    mock_subprocess.run.return_value.stdout = spdx_parent_sbom_bytes
+@patch("create_contextual_sbom.LOGGER")
+def test_download_parent_image_sbom_multiarch(
+    mock_logger: MagicMock, mock_subprocess: MagicMock, spdx_parent_sbom_bytes: bytes, inspected_parent_multiarch: bytes
+):
+    def mock_subprocess_side_effect(*args, **_):
+        """Mimics the functionality of both skopeo and cosign."""
+        run_result = MagicMock()
+        if args[0][0] == "/usr/bin/cosign":
+            # This simulates cosign
+            run_result.stdout = spdx_parent_sbom_bytes
+        elif args[0][0] == "/usr/bin/skopeo":
+            # This simulates skopeo
+            run_result.stdout = inspected_parent_multiarch
+        return run_result
+
+    mock_subprocess.run.side_effect = mock_subprocess_side_effect
     sbom_doc = download_parent_image_sbom("foo", "bar")
     assert _get_sbom_format(sbom_doc) is SBOMFormat.SPDX2X
+    mock_logger.debug.assert_any_call("The parent image pullspec points to a multiarch image")
+
+
+@patch("create_contextual_sbom.subprocess")
+@patch("create_contextual_sbom.LOGGER")
+def test_download_parent_image_sbom_singlearch(
+    mock_logger: MagicMock,
+    mock_subprocess: MagicMock,
+    spdx_parent_sbom_bytes: bytes,
+    inspected_parent_singlearch: bytes,
+):
+    def mock_subprocess_side_effect(*args, **_):
+        """Mimics the functionality of both skopeo and cosign."""
+        run_result = MagicMock()
+        if args[0][0] == "/usr/bin/cosign":
+            # This simulates cosign
+            run_result.stdout = spdx_parent_sbom_bytes
+        elif args[0][0] == "/usr/bin/skopeo":
+            # This simulates skopeo
+            run_result.stdout = inspected_parent_singlearch
+        return run_result
+
+    mock_subprocess.run.side_effect = mock_subprocess_side_effect
+    sbom_doc = download_parent_image_sbom("foo", "bar")
+    assert _get_sbom_format(sbom_doc) is SBOMFormat.SPDX2X
+    mock_logger.debug.assert_any_call("The parent image pullspec does not point to a multiarch image")

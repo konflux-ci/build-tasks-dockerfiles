@@ -208,7 +208,7 @@ def get_parent_image_pullspec(
 
 def download_parent_image_sbom(pullspec: str | None, arch: str) -> SBOM_DOC | None:
     """
-    Downloads parent pullspec. First tries to download arch-specific SBOM, then image index
+    Downloads parent SBOM. First tries to download arch-specific SBOM, then image index
     as a fallback.
     Args:
         pullspec:
@@ -221,12 +221,17 @@ def download_parent_image_sbom(pullspec: str | None, arch: str) -> SBOM_DOC | No
     if not pullspec:
         LOGGER.debug("No parent image found.")
         return None
-    cmd_result = subprocess.run(
-        ["/usr/bin/cosign", "download", "sbom", f"--platform={arch}", pullspec], capture_output=True
-    )
-    if "specified reference is not a multiarch image" in cmd_result.stderr.decode():
-        LOGGER.debug("Not a multiarch image, trying without version...")
-        cmd_result = subprocess.run(["/usr/bin/cosign", "download", "sbom", pullspec], capture_output=True)
+    skopeo_output = subprocess.run(["/usr/bin/skopeo", "inspect", "--raw", f"docker://{pullspec}"], capture_output=True)
+    inspected_image = json.loads(skopeo_output.stdout)
+
+    cosign_command = ["/usr/bin/cosign", "download", "sbom", pullspec]
+    if inspected_image.get("manifests"):
+        LOGGER.debug("The parent image pullspec points to a multiarch image")
+        cosign_command.insert(-1, f"--platform={arch}")
+    else:
+        LOGGER.debug("The parent image pullspec does not point to a multiarch image")
+    cmd_result = subprocess.run(cosign_command, capture_output=True)
+
     if not cmd_result.stdout:
         LOGGER.debug("Could not locate SBOM. Raw stderr output: " + cmd_result.stderr.decode())
         return None
