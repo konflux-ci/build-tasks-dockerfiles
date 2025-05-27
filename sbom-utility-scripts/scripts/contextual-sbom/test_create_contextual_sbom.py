@@ -1,9 +1,21 @@
 import json
+from pathlib import Path
 from typing import Any
+from unittest.mock import patch, MagicMock
 
 import pytest
 
-from create_contextual_sbom import get_base_images, get_parent_image, identify_arch
+from create_contextual_sbom import (
+    get_base_images,
+    get_parent_image_pullspec,
+    identify_arch,
+    use_contextual_sbom_creation,
+    ARCH_TRANSLATION,
+    download_parent_image_sbom,
+    _get_sbom_format,
+    SBOMFormat,
+    load_json,
+)
 
 
 @pytest.fixture(scope="session")
@@ -16,6 +28,30 @@ def sample1_parsed_dockerfile() -> dict[str, Any]:
 def sample2_parsed_dockerfile() -> dict[str, Any]:
     with open("test_data/sample2/parsed.json") as json_file:
         return json.load(json_file)
+
+
+@pytest.fixture(scope="session")
+def spdx_parent_sbom_bytes() -> bytes:
+    with open("test_data/fake_parent_sbom/parent_sbom.spdx.json", "rb") as sbom_file:
+        return sbom_file.read()
+
+
+@pytest.fixture(scope="session")
+def inspected_parent_multiarch() -> bytes:
+    with open("test_data/fake_image_inspect/inspect_multiarch.json", "rb") as inspect_file:
+        return inspect_file.read()
+
+
+@pytest.fixture(scope="session")
+def inspected_parent_singlearch() -> bytes:
+    with open("test_data/fake_image_inspect/inspect_singlearch.json", "rb") as inspect_file:
+        return inspect_file.read()
+
+
+@pytest.fixture(scope="session")
+def cdx_parent_sbom_bytes() -> bytes:
+    with open("test_data/fake_parent_sbom/parent_sbom.cdx.json", "rb") as sbom_file:
+        return sbom_file.read()
 
 
 def test_get_base_images(sample1_parsed_dockerfile: dict[str, Any]) -> None:
@@ -51,8 +87,95 @@ def test_get_parent_image(
 ):
     """For tested dockerfiles, visit the `test_data` directory."""
     parsed_file = sample1_parsed_dockerfile if sample_name == "sample1" else sample2_parsed_dockerfile
-    assert get_parent_image(parsed_file, target) == expected_spec
+    assert get_parent_image_pullspec(parsed_file, target) == expected_spec
 
-def test_identify_arch():
+
+def test_identify_arch_basic():
     res = identify_arch()
-    assert isinstance(res, str) and res
+    assert isinstance(res, str)
+    assert res.startswith("linux/")
+    assert res.removeprefix("linux/") in ARCH_TRANSLATION
+    assert any(f"linux/{arch}" == res for arch in {"amd64", "arm64", "ppc64le", "s390x"})
+
+
+@pytest.mark.parametrize(
+    ["uname_output", "expected_cosign_arch"],
+    [
+        (b"x64", "amd64"),
+        (b"x86_64", "amd64"),
+        (b"armv8b", "arm64"),
+        (b"arm", "arm64"),
+        (b"aarch64", "arm64"),
+        (b"armv8l", "arm64"),
+        (b"aarch64_be", "arm64"),
+        (b"ppcle", "ppc64le"),
+        (b"powerpc", "ppc64le"),
+        (b"ppc", "ppc64le"),
+        (b"ppc64", "ppc64le"),
+        (b"s390", "s390x"),
+    ],
+)
+@patch("create_contextual_sbom.subprocess")
+def test_identify_arch(mock_subprocess: MagicMock, uname_output: bytes, expected_cosign_arch: str):
+    mock_subprocess.run.return_value.stdout = uname_output
+    assert identify_arch() == f"linux/{expected_cosign_arch}"
+
+
+@pytest.mark.parametrize(
+    ["sbom_name", "expected_output"],
+    [("parent_sbom.spdx.json", True), ("parent_sbom.cdx.json", False)],
+)
+def test_use_contextual_sbom_creation(sbom_name: str, expected_output: bool):
+    path_to_file = Path("test_data/fake_parent_sbom") / sbom_name
+    assert use_contextual_sbom_creation(load_json(path_to_file)) == expected_output
+
+
+def test_use_contextual_sbom_creation_sbom_is_none():
+    assert use_contextual_sbom_creation(None) == False
+
+
+@patch("create_contextual_sbom.subprocess")
+@patch("create_contextual_sbom.LOGGER")
+def test_download_parent_image_sbom_multiarch(
+    mock_logger: MagicMock, mock_subprocess: MagicMock, spdx_parent_sbom_bytes: bytes, inspected_parent_multiarch: bytes
+):
+    def mock_subprocess_side_effect(*args, **_):
+        """Mimics the functionality of both skopeo and cosign."""
+        run_result = MagicMock()
+        if args[0][0] == "/usr/bin/cosign":
+            # This simulates cosign
+            run_result.stdout = spdx_parent_sbom_bytes
+        elif args[0][0] == "/usr/bin/skopeo":
+            # This simulates skopeo
+            run_result.stdout = inspected_parent_multiarch
+        return run_result
+
+    mock_subprocess.run.side_effect = mock_subprocess_side_effect
+    sbom_doc = download_parent_image_sbom("foo", "bar")
+    assert _get_sbom_format(sbom_doc) is SBOMFormat.SPDX2X
+    mock_logger.debug.assert_any_call("The parent image pullspec points to a multiarch image")
+
+
+@patch("create_contextual_sbom.subprocess")
+@patch("create_contextual_sbom.LOGGER")
+def test_download_parent_image_sbom_singlearch(
+    mock_logger: MagicMock,
+    mock_subprocess: MagicMock,
+    spdx_parent_sbom_bytes: bytes,
+    inspected_parent_singlearch: bytes,
+):
+    def mock_subprocess_side_effect(*args, **_):
+        """Mimics the functionality of both skopeo and cosign."""
+        run_result = MagicMock()
+        if args[0][0] == "/usr/bin/cosign":
+            # This simulates cosign
+            run_result.stdout = spdx_parent_sbom_bytes
+        elif args[0][0] == "/usr/bin/skopeo":
+            # This simulates skopeo
+            run_result.stdout = inspected_parent_singlearch
+        return run_result
+
+    mock_subprocess.run.side_effect = mock_subprocess_side_effect
+    sbom_doc = download_parent_image_sbom("foo", "bar")
+    assert _get_sbom_format(sbom_doc) is SBOMFormat.SPDX2X
+    mock_logger.debug.assert_any_call("The parent image pullspec does not point to a multiarch image")
