@@ -105,7 +105,7 @@ def _is_syft_local_golang_component(component: SBOMItem) -> bool:
     """
     Check if a Syft Golang reported component is a local replacement.
 
-    Local replacements are reported in a very different way by Cachi2, which is why the same
+    Local replacements are reported in a very different way by Hermeto, which is why the same
     reports by Syft should be removed.
     """
     purl = component.purl()
@@ -116,16 +116,16 @@ def _is_syft_local_golang_component(component: SBOMItem) -> bool:
     return component.name().startswith(".") or component.version() == "(devel)"
 
 
-def _is_cachi2_non_registry_dependency(component: SBOMItem) -> bool:
+def _is_hermeto_non_registry_dependency(component: SBOMItem) -> bool:
     """
-    Check if Cachi2 component was fetched from a VCS or a direct file location.
+    Check if Hermeto component was fetched from a VCS or a direct file location.
 
-    Cachi2 reports non-registry components in a different way from Syft, so the reports from
+    Hermeto reports non-registry components in a different way from Syft, so the reports from
     Syft need to be removed.
 
     Unfortunately, there's no way to determine which components are non-registry by looking
     at the Syft report alone. This function is meant to create a list of non-registry components
-    from Cachi2's SBOM, then remove the corresponding ones reported by Syft for the merged SBOM.
+    from Hermeto's SBOM, then remove the corresponding ones reported by Syft for the merged SBOM.
 
     Note that this function is only applicable for PyPI or NPM components.
     """
@@ -137,9 +137,9 @@ def _is_cachi2_non_registry_dependency(component: SBOMItem) -> bool:
     return purl.type in ("pypi", "npm") and ("vcs_url" in qualifiers or "download_url" in qualifiers)
 
 
-def _unique_key_cachi2(component: SBOMItem) -> str:
+def _unique_key_hermeto(component: SBOMItem) -> str:
     """
-    Create a unique key from Cachi2 reported components.
+    Create a unique key from Hermeto reported components.
 
     This is done by taking a purl and removing any qualifiers and subpaths.
 
@@ -158,7 +158,7 @@ def _unique_key_syft(component: SBOMItem) -> str:
     This is done by taking a lowercase namespace/name, and URL encoding the version.
 
     Syft does not set any qualifier for NPM, Pip or Golang, so there's no need to remove them
-    as done in _unique_key_cachi2.
+    as done in _unique_key_hermeto.
 
     If a Syft component lacks a purl (e.g. type OS), we'll use its name and version instead.
     """
@@ -184,33 +184,37 @@ def _unique_key_syft(component: SBOMItem) -> str:
     return purl._replace(name=name, version=version, subpath=subpath).to_string()
 
 
-def _get_syft_component_filter(cachi_sbom_components: Sequence[SBOMItem]) -> Callable[[SBOMItem], bool]:
+def _get_syft_component_filter(
+    hermeto_sbom_components: Sequence[SBOMItem],
+) -> Callable[[SBOMItem], bool]:
     """
     Get a function that filters out Syft components for the merged SBOM.
 
     This function currently considers a Syft component as a duplicate/removable if:
-    - it has the same key as a Cachi2 component
+    - it has the same key as a Hermeto component
     - it is a local Golang replacement
-    - is a non-registry component also reported by Cachi2
+    - is a non-registry component also reported by Hermeto
 
     Note that for the last bullet, we can only rely on the Pip dependency's name to find a
-    duplicate. This is because Cachi2 does not report a non-PyPI Pip dependency's version.
+    duplicate. This is because Hermeto does not report a non-PyPI Pip dependency's version.
 
     Even though multiple versions of a same dependency can be available in the same project,
-    we are removing all Syft instances by name only because Cachi2 will report them correctly,
+    we are removing all Syft instances by name only because Hermeto will report them correctly,
     given that it scans all the source code properly and the image is built hermetically.
     """
-    cachi2_non_registry_components = [
-        component.name() for component in cachi_sbom_components if _is_cachi2_non_registry_dependency(component)
+    hermeto_non_registry_components = [
+        component.name() for component in hermeto_sbom_components if _is_hermeto_non_registry_dependency(component)
     ]
-    cachi2_local_paths = {
-        Path(subpath) for component in cachi_sbom_components if (purl := component.purl()) and (subpath := purl.subpath)
+    hermeto_local_paths = {
+        Path(subpath)
+        for component in hermeto_sbom_components
+        if (purl := component.purl()) and (subpath := purl.subpath)
     }
 
-    cachi2_indexed_components = {_unique_key_cachi2(component): component for component in cachi_sbom_components}
+    hermeto_indexed_components = {_unique_key_hermeto(component): component for component in hermeto_sbom_components}
 
     def is_duplicate_non_registry_component(component: SBOMItem) -> bool:
-        return component.name() in cachi2_non_registry_components
+        return component.name() in hermeto_non_registry_components
 
     def is_duplicate_npm_localpath_component(component: SBOMItem) -> bool:
         purl = component.purl()
@@ -218,7 +222,7 @@ def _get_syft_component_filter(cachi_sbom_components: Sequence[SBOMItem]) -> Cal
             return False
         # instead of reporting path dependencies as pkg:npm/name@version?...#subpath,
         # syft repots them as pkg:npm/subpath@version
-        return Path(purl.namespace or "", purl.name) in cachi2_local_paths
+        return Path(purl.namespace or "", purl.name) in hermeto_local_paths
 
     def component_is_duplicated(component: SBOMItem) -> bool:
         key = _unique_key_syft(component)
@@ -227,7 +231,7 @@ def _get_syft_component_filter(cachi_sbom_components: Sequence[SBOMItem]) -> Cal
             _is_syft_local_golang_component(component)
             or is_duplicate_non_registry_component(component)
             or is_duplicate_npm_localpath_component(component)
-            or key in cachi2_indexed_components.keys()
+            or key in hermeto_indexed_components.keys()
         )
 
     return component_is_duplicated
@@ -283,12 +287,12 @@ def _merge_tools_metadata(sbom_a: dict[Any, Any], sbom_b: dict[Any, Any]) -> Non
 type MergeComponentsFunc[T: SBOMItem] = Callable[[Sequence[T], Sequence[T]], list[dict[str, Any]]]
 
 
-def merge_by_prefering_cachi2[T: SBOMItem](
-    syft_components: Sequence[T], cachi2_components: Sequence[T]
+def merge_by_prefering_hermeto[T: SBOMItem](
+    syft_components: Sequence[T], hermeto_components: Sequence[T]
 ) -> list[dict[str, Any]]:
-    is_duplicate_component = _get_syft_component_filter(cachi2_components)
+    is_duplicate_component = _get_syft_component_filter(hermeto_components)
     merged = [c for c in syft_components if not is_duplicate_component(c)]
-    merged += cachi2_components
+    merged += hermeto_components
     return [c.unwrap() for c in merged]
 
 
@@ -438,13 +442,13 @@ def detect_sbom_type(sbom: dict[str, Any]) -> Literal["cyclonedx", "spdx"]:
         raise ValueError("Unknown SBOM format")
 
 
-def merge_syft_and_cachi2_sboms(syft_sbom_paths: list[str], cachi2_sbom_path: str) -> dict[str, Any]:
+def merge_syft_and_hermeto_sboms(syft_sbom_paths: list[str], hermeto_sbom_path: str) -> dict[str, Any]:
     syft_sbom = merge_n_syft_sboms(syft_sbom_paths)
 
-    with open(cachi2_sbom_path) as file:
-        cachi2_sbom = json.load(file)
+    with open(hermeto_sbom_path) as file:
+        hermeto_sbom = json.load(file)
 
-    return merge_sboms(syft_sbom, cachi2_sbom, merge_by_prefering_cachi2)
+    return merge_sboms(syft_sbom, hermeto_sbom, merge_by_prefering_hermeto)
 
 
 def merge_n_syft_sboms(syft_sbom_paths: list[str]) -> dict[str, Any]:
@@ -477,8 +481,8 @@ def main() -> None:
     args = parser.parse_args()
 
     # For backwards compatiblity, if the flavour is unspecified,
-    # the left SBOM defaults to cachi2 and the right one(s) to syft.
-    sbom_a: tuple[str, str] = parse_sbom_arg(args.sbom_a, default_flavour="cachi2")
+    # the left SBOM defaults to hermeto and the right one(s) to syft.
+    sbom_a: tuple[str, str] = parse_sbom_arg(args.sbom_a, default_flavour="hermeto")
     more_sboms: list[tuple[str, str]] = [parse_sbom_arg(arg, default_flavour="syft") for arg in args.more_sboms]
 
     sboms = [sbom_a, *more_sboms]
@@ -489,8 +493,8 @@ def main() -> None:
     merged = None
 
     match sbom_paths_by_flavour:
-        case {"cachi2": [cachi2_sbom_path], "syft": syft_sbom_paths, **extra} if not extra:
-            merged = merge_syft_and_cachi2_sboms(syft_sbom_paths, cachi2_sbom_path)
+        case {"hermeto": [hermeto_sbom_path], "syft": syft_sbom_paths, **extra} if not extra:
+            merged = merge_syft_and_hermeto_sboms(syft_sbom_paths, hermeto_sbom_path)
         case {"syft": syft_sbom_paths, **extra} if not extra:
             merged = merge_n_syft_sboms(syft_sbom_paths)
         case _:
@@ -498,7 +502,7 @@ def main() -> None:
             raise ValueError(
                 f"Unsupported combination of SBOM flavours: {flavours}\n"
                 "\n"
-                "This script supports merging 0 or 1 cachi2 SBOM with >=1 syft SBOMs"
+                "This script supports merging 0 or 1 hermeto SBOM with >=1 syft SBOMs"
             )
 
     print(json.dumps(merged, indent=2))
