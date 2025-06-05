@@ -6,6 +6,7 @@ from src.parent_content import (
     adjust_parent_image_relationship_in_legacy_sbom,
     adjust_parent_image_spdx_element_ids,
     download_parent_image_sbom,
+    get_used_parent_image_from_legacy_sbom,
 )
 from src.mock import calculate_component_only_content
 from src.parsed_dockerfile import get_base_images, get_parent_image_pullspec
@@ -51,7 +52,9 @@ def main():
 
     use_contextual = use_contextual_sbom_creation(parent_sbom_doc)
     if not use_contextual:
-        LOGGER.debug("Parent image does not fulfill criteria for contextual SBOM generation. Exiting.")
+        LOGGER.debug(
+            "Parent image is not present or does not fulfill criteria for contextual SBOM generation. Exiting."
+        )
         exit(0)
 
     # mocked functions
@@ -59,8 +62,9 @@ def main():
     component_only_sbom_doc = calculate_component_only_content(parent_sbom_doc, component_sbom_doc)
     print(component_only_sbom_doc)
 
-    parent_sbom_doc = adjust_parent_image_relationship_in_legacy_sbom(parent_sbom_doc)
-    parent_sbom_doc = adjust_parent_image_spdx_element_ids(parent_sbom_doc, component_sbom_doc)
+    grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(parent_sbom_doc)
+    parent_sbom_doc = adjust_parent_image_relationship_in_legacy_sbom(parent_sbom_doc, grandparent_spdx_id)
+    parent_sbom_doc = adjust_parent_image_spdx_element_ids(parent_sbom_doc, component_sbom_doc, grandparent_spdx_id)
 
     if parent_sbom_doc and not save_json(parent_sbom_doc, MODIFIED_PARENT_SBOM_FILE_PATH):
         exit(1)

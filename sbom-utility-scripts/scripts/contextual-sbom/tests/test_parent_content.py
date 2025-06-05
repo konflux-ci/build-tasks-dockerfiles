@@ -9,6 +9,7 @@ from src.parent_content import (
     download_parent_image_sbom,
     adjust_parent_image_relationship_in_legacy_sbom,
     adjust_parent_image_spdx_element_ids,
+    get_used_parent_image_from_legacy_sbom,
 )
 from src.utils import (
     identify_arch,
@@ -226,7 +227,10 @@ def test_adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_sbom: dict[
     """
     spdx_parent_edit = deepcopy(spdx_parent_sbom)
 
-    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit)["relationships"]
+    grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
+        "relationships"
+    ]
     descendant_of_relationship = list(filter(lambda r: r["relationshipType"] == "DESCENDANT_OF", relationships))
     assert len(descendant_of_relationship) == 1
     assert descendant_of_relationship[0]["spdxElementId"] == "SPDXRef-image"  # self (downloaded parent image)
@@ -250,7 +254,10 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_no_change(
     spdx_parent_edit["relationships"][-1]["relationshipType"] = "DESCENDANT_OF"
     spdx_parent_edit["relationships"][-1]["relatedSpdxElement"] = "SPDXRef-image-registry.access.redhat.com/ubi9"
 
-    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit)["relationships"]
+    grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
+        "relationships"
+    ]
     descendant_of_relationship = list(filter(lambda r: r["relationshipType"] == "DESCENDANT_OF", relationships))
     assert len(descendant_of_relationship) == 1
     assert descendant_of_relationship[0]["spdxElementId"] == "SPDXRef-image"  # self (downloaded parent image)
@@ -276,13 +283,72 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_unknown_relationship(
     spdx_parent_edit["relationships"][-1]["relationshipType"] = "OTHER"
     spdx_parent_edit["relationships"][-1]["relatedSpdxElement"] = "SPDXRef-image"
 
-    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit)["relationships"]
+    grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
+        "relationships"
+    ]
     descendant_of_relationship = list(filter(lambda r: r["relationshipType"] == "DESCENDANT_OF", relationships))
     assert len(descendant_of_relationship) == 0
-    mock_logger.debug.assert_any_call(
+    mock_logger.warning.assert_any_call(
         "[Parent image content] Targeted SPDXID SPDXRef-image"
         "-registry.access.redhat.com/ubi9 does not bear "
         "BUILD_TOOL_OF relationship but OTHER relationship."
+    )
+
+
+@patch("src.parent_content.LOGGER")
+def test_adjust_parent_image_relationship_in_legacy_sbom_no_relationship(
+    mock_logger: MagicMock, spdx_parent_sbom: dict[str, Any]
+):
+    """
+    Missing relationship between parent image and its parent image.
+    """
+    spdx_parent_edit = deepcopy(spdx_parent_sbom)
+    spdx_parent_edit["relationships"].pop(-1)
+
+    grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
+        "relationships"
+    ]
+    descendant_of_relationship = list(filter(lambda r: r["relationshipType"] == "DESCENDANT_OF", relationships))
+    assert len(descendant_of_relationship) == 0
+    mock_logger.warning.assert_any_call(
+        "[Parent image content] Targeted SPDXID SPDXRef-image"
+        "-registry.access.redhat.com/ubi9 does not bear any relationship!"
+    )
+
+
+@patch("src.parent_content.LOGGER")
+def test_adjust_parent_image_relationship_in_legacy_sbom_multiple_relationships(
+    mock_logger: MagicMock, spdx_parent_sbom: dict[str, Any]
+):
+    """
+    Multiple relationships between parent image and its parent image.
+    """
+    spdx_parent_edit = deepcopy(spdx_parent_sbom)
+    spdx_parent_edit["relationships"][-1] = {
+        "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi9",
+        "relationshipType": "BUILD_TOOL_OF",
+        "relatedSpdxElement": "SPDXRef-image",
+    }
+    spdx_parent_edit["relationships"].append(
+        {
+            "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi9",
+            "relationshipType": "BUILD_TOOL_OF",
+            "relatedSpdxElement": "SPDXRef-image-what?",
+        }
+    )
+
+    grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
+        "relationships"
+    ]
+    descendant_of_relationship = list(filter(lambda r: r["relationshipType"] == "DESCENDANT_OF", relationships))
+    assert len(descendant_of_relationship) == 0
+    mock_logger.warning.assert_any_call(
+        "[Parent image content] Targeted SPDXID SPDXRef-image"
+        "-registry.access.redhat.com/ubi9 has more than one relationship. "
+        "This is not expected, skipping modification."
     )
 
 
@@ -298,7 +364,10 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_parent_not_marked(
     spdx_parent_edit = deepcopy(spdx_parent_sbom)
     spdx_parent_edit["packages"][-1]["annotations"].pop(0)
 
-    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit)["relationships"]
+    grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
+        "relationships"
+    ]
     build_tool_of_relationship = list(filter(lambda r: r["relationshipType"] == "BUILD_TOOL_OF", relationships))
     assert len(build_tool_of_relationship) == 2
     mock_logger.debug.assert_any_call(
@@ -335,8 +404,10 @@ def test_adjust_parent_image_spdx_element_ids(spdx_parent_sbom: dict[str, Any], 
     # The component SBOM is already expected to have DESCENDANT_OF
     # relationship, because it is produced after implementation of the ISV-5858
     spdx_component_edit = deepcopy(spdx_component_sbom)
-
-    adjusted_parent_sbom = adjust_parent_image_spdx_element_ids(spdx_parent_edit, spdx_component_edit)
+    grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
+    adjusted_parent_sbom = adjust_parent_image_spdx_element_ids(
+        spdx_parent_edit, spdx_component_edit, grandparent_spdx_id
+    )
 
     converted_parent_packages = [
         r["relatedSpdxElement"]

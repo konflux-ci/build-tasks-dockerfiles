@@ -13,8 +13,7 @@ def get_component_sbom() -> dict[str, List[dict[str, str]]]:
             {
                 "spdxElementId": "SPDXRef-image",
                 "relationshipType": "DESCENDANT_OF",
-                "relatedSpdxElement": "_mock_SPDXRef-image-registry.access."
-                "redhat.com/swapped/spdxElementId/in/parent/content",
+                "relatedSpdxElement": "SPDXRef-image-registry.access." "redhat.com/parent-of-component:latest",
             }
         ]
     }
