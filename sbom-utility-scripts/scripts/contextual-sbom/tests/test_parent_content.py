@@ -5,6 +5,9 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+from spdx_tools.spdx.parser.parse_anything import parse_file
+from spdx_tools.spdx.model import RelationshipType, Relationship
+
 from src.parent_content import (
     download_parent_image_sbom,
     adjust_parent_image_relationship_in_legacy_sbom,
@@ -228,15 +231,15 @@ def test_adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_sbom: dict[
     spdx_parent_edit = deepcopy(spdx_parent_sbom)
 
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
-    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
-        "relationships"
-    ]
-    descendant_of_relationship = list(filter(lambda r: r["relationshipType"] == "DESCENDANT_OF", relationships))
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
+    descendant_of_relationship = list(
+        filter(lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF, relationships)
+    )
     assert len(descendant_of_relationship) == 1
-    assert descendant_of_relationship[0]["spdxElementId"] == "SPDXRef-image"  # self (downloaded parent image)
+    assert descendant_of_relationship[0].spdx_element_id == "SPDXRef-image"  # self (downloaded parent image)
     # is descendant of
     assert (
-        descendant_of_relationship[0]["relatedSpdxElement"] == "SPDXRef-image-registry.access.redhat.com/ubi9"
+        descendant_of_relationship[0].related_spdx_element_id == "SPDXRef-image-registry.access.redhat.com/ubi9"
     )  # parent image of this parent image
 
 
@@ -250,20 +253,20 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_no_change(
     relationship set.
     """
     spdx_parent_edit = deepcopy(spdx_parent_sbom)
-    spdx_parent_edit["relationships"][-1]["spdxElementId"] = "SPDXRef-image"
-    spdx_parent_edit["relationships"][-1]["relationshipType"] = "DESCENDANT_OF"
-    spdx_parent_edit["relationships"][-1]["relatedSpdxElement"] = "SPDXRef-image-registry.access.redhat.com/ubi9"
+    spdx_parent_edit.relationships[-1].spdx_element_id = "SPDXRef-image"
+    spdx_parent_edit.relationships[-1].relationship_type = RelationshipType.DESCENDANT_OF
+    spdx_parent_edit.relationships[-1].related_spdx_element_id = "SPDXRef-image-registry.access.redhat.com/ubi9"
 
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
-    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
-        "relationships"
-    ]
-    descendant_of_relationship = list(filter(lambda r: r["relationshipType"] == "DESCENDANT_OF", relationships))
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
+    descendant_of_relationship = list(
+        filter(lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF, relationships)
+    )
     assert len(descendant_of_relationship) == 1
-    assert descendant_of_relationship[0]["spdxElementId"] == "SPDXRef-image"  # self (downloaded parent image)
+    assert descendant_of_relationship[0].spdx_element_id == "SPDXRef-image"  # self (downloaded parent image)
     # is descendant of
     assert (
-        descendant_of_relationship[0]["relatedSpdxElement"] == "SPDXRef-image-registry.access.redhat.com/ubi9"
+        descendant_of_relationship[0].related_spdx_element_id == "SPDXRef-image-registry.access.redhat.com/ubi9"
     )  # parent image of this parent image
     mock_logger.debug.assert_any_call(
         "[Parent image content] Downloaded parent image " "content already contains DESCENDANT_OF relationship."
@@ -279,20 +282,20 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_unknown_relationship(
     and thus we cannot use convert_to_descendant_of_relationship function.
     """
     spdx_parent_edit = deepcopy(spdx_parent_sbom)
-    spdx_parent_edit["relationships"][-1]["spdxElementId"] = "SPDXRef-image-registry.access.redhat.com/ubi9"
-    spdx_parent_edit["relationships"][-1]["relationshipType"] = "OTHER"
-    spdx_parent_edit["relationships"][-1]["relatedSpdxElement"] = "SPDXRef-image"
+    spdx_parent_edit.relationships[-1].spdx_element_id = "SPDXRef-image-registry.access.redhat.com/ubi9"
+    spdx_parent_edit.relationships[-1].relationship_type = RelationshipType.OTHER
+    spdx_parent_edit.relationships[-1].related_spdx_element_id = "SPDXRef-image"
 
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
-    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
-        "relationships"
-    ]
-    descendant_of_relationship = list(filter(lambda r: r["relationshipType"] == "DESCENDANT_OF", relationships))
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
+    descendant_of_relationship = list(
+        filter(lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF, relationships)
+    )
     assert len(descendant_of_relationship) == 0
     mock_logger.warning.assert_any_call(
         "[Parent image content] Targeted SPDXID SPDXRef-image"
         "-registry.access.redhat.com/ubi9 does not bear "
-        "BUILD_TOOL_OF relationship but OTHER relationship."
+        "BUILD_TOOL_OF relationship but RelationshipType.OTHER relationship."
     )
 
 
@@ -304,13 +307,13 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_no_relationship(
     Missing relationship between parent image and its parent image.
     """
     spdx_parent_edit = deepcopy(spdx_parent_sbom)
-    spdx_parent_edit["relationships"].pop(-1)
+    spdx_parent_edit.relationships.pop(-1)
 
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
-    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
-        "relationships"
-    ]
-    descendant_of_relationship = list(filter(lambda r: r["relationshipType"] == "DESCENDANT_OF", relationships))
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
+    descendant_of_relationship = list(
+        filter(lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF, relationships)
+    )
     assert len(descendant_of_relationship) == 0
     mock_logger.warning.assert_any_call(
         "[Parent image content] Targeted SPDXID SPDXRef-image"
@@ -326,24 +329,24 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_multiple_relationships(
     Multiple relationships between parent image and its parent image.
     """
     spdx_parent_edit = deepcopy(spdx_parent_sbom)
-    spdx_parent_edit["relationships"][-1] = {
-        "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi9",
-        "relationshipType": "BUILD_TOOL_OF",
-        "relatedSpdxElement": "SPDXRef-image",
-    }
-    spdx_parent_edit["relationships"].append(
-        {
-            "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi9",
-            "relationshipType": "BUILD_TOOL_OF",
-            "relatedSpdxElement": "SPDXRef-image-what?",
-        }
+    spdx_parent_edit.relationships[-1] = Relationship(
+        spdx_element_id="SPDXRef-image-registry.access.redhat.com/ubi9",
+        relationship_type=RelationshipType.BUILD_TOOL_OF,
+        related_spdx_element_id="SPDXRef-image",
+    )
+    spdx_parent_edit.relationships.append(
+        Relationship(
+            spdx_element_id="SPDXRef-image-registry.access.redhat.com/ubi9",
+            relationship_type=RelationshipType.BUILD_TOOL_OF,
+            related_spdx_element_id="SPDXRef-image-what?",
+        )
     )
 
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
-    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
-        "relationships"
-    ]
-    descendant_of_relationship = list(filter(lambda r: r["relationshipType"] == "DESCENDANT_OF", relationships))
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
+    descendant_of_relationship = list(
+        filter(lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF, relationships)
+    )
     assert len(descendant_of_relationship) == 0
     mock_logger.warning.assert_any_call(
         "[Parent image content] Targeted SPDXID SPDXRef-image"
@@ -362,13 +365,13 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_parent_not_marked(
     generated by konflux - we cannot determine the parent.
     """
     spdx_parent_edit = deepcopy(spdx_parent_sbom)
-    spdx_parent_edit["packages"][-1]["annotations"].pop(0)
+    spdx_parent_edit.annotations.pop(-1)
 
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
-    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id)[
-        "relationships"
-    ]
-    build_tool_of_relationship = list(filter(lambda r: r["relationshipType"] == "BUILD_TOOL_OF", relationships))
+    relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
+    build_tool_of_relationship = list(
+        filter(lambda r: r.relationship_type == RelationshipType.BUILD_TOOL_OF, relationships)
+    )
     assert len(build_tool_of_relationship) == 2
     mock_logger.debug.assert_any_call(
         "[Parent image content] Cannot determine parent of the "
@@ -388,14 +391,15 @@ def test_adjust_parent_image_spdx_element_ids(spdx_parent_sbom: dict[str, Any], 
     """
     spdx_parent_edit = deepcopy(spdx_parent_sbom)
     # DESCENDANT_OF relationship is already set by adjust_parent_image_relationship_in_legacy_sbom_parent
-    spdx_parent_edit["relationships"][-1]["spdxElementId"] = "SPDXRef-image"  # this will be changed at the end
-    spdx_parent_edit["relationships"][-1]["relationshipType"] = "DESCENDANT_OF"
-    spdx_parent_edit["relationships"][-1]["relatedSpdxElement"] = "SPDXRef-image-registry.access.redhat.com/ubi9"
-
+    spdx_parent_edit.relationships[-1] = Relationship(
+        spdx_element_id="SPDXRef-image",  # this will be changed at the end
+        relationship_type=RelationshipType.DESCENDANT_OF,
+        related_spdx_element_id="SPDXRef-image-registry.access.redhat.com/ubi9",
+    )
     to_be_converted_parent_packages = [
-        r["relatedSpdxElement"]
-        for r in spdx_parent_edit["relationships"]
-        if r["relationshipType"] == "CONTAINS" and r["spdxElementId"] == "SPDXRef-image"
+        r.related_spdx_element_id
+        for r in spdx_parent_edit.relationships
+        if r.relationship_type == RelationshipType.CONTAINS and r.spdx_element_id == "SPDXRef-image"
     ]
     # SPDXRef-package_grandparent, SPDXRef-package_parent
     # in parent_sbom_legacy_with_builder.spdx.json
@@ -410,9 +414,9 @@ def test_adjust_parent_image_spdx_element_ids(spdx_parent_sbom: dict[str, Any], 
     )
 
     converted_parent_packages = [
-        r["relatedSpdxElement"]
-        for r in adjusted_parent_sbom["relationships"]
-        if r["spdxElementId"] == "SPDXRef-image-parent_sbom_legacy_with_builder.spdx.json"
+        r.related_spdx_element_id
+        for r in adjusted_parent_sbom.relationships
+        if r.spdx_element_id == "SPDXRef-image-parent_sbom_legacy_with_builder.spdx.json"
     ]
     # SPDXRef-package_component in component_sbom.spdx.json is
     # untouched because belongs to the final component.
@@ -426,6 +430,6 @@ def test_adjust_parent_image_spdx_element_ids(spdx_parent_sbom: dict[str, Any], 
     assert set(to_be_converted_parent_packages).issubset(set(converted_parent_packages))
     # This is the last thing that needs to be edited in parent SBOM -
     assert (
-        adjusted_parent_sbom["relationships"][-1]["spdxElementId"]
+        adjusted_parent_sbom.relationships[-1].spdx_element_id
         == "SPDXRef-image-parent_sbom_legacy_with_builder.spdx.json"
     )

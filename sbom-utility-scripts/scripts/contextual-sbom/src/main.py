@@ -1,6 +1,9 @@
 from argparse import Namespace, ArgumentParser
 from pathlib import Path
 
+from spdx_tools.spdx.parser.parse_anything import parse_file
+from spdx_tools.spdx.writer.write_anything import write_file
+
 from src.utils import use_contextual_sbom_creation, load_json, identify_arch, save_json
 from src.parent_content import (
     adjust_parent_image_relationship_in_legacy_sbom,
@@ -57,19 +60,19 @@ def main():
         )
         exit(0)
 
+    parent_sbom_doc = parse_file(str(ORIGINAL_PARENT_SBOM_FILE_PATH))
+
     # mocked functions
     component_sbom_doc = get_component_sbom()
     component_only_sbom_doc = calculate_component_only_content(parent_sbom_doc, component_sbom_doc)
-    print(component_only_sbom_doc)
+    print(component_only_sbom_doc)  # remove this print after an usecase is implemented
 
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(parent_sbom_doc)
     parent_sbom_doc = adjust_parent_image_relationship_in_legacy_sbom(parent_sbom_doc, grandparent_spdx_id)
     parent_sbom_doc = adjust_parent_image_spdx_element_ids(parent_sbom_doc, component_sbom_doc, grandparent_spdx_id)
 
-    if parent_sbom_doc and not save_json(parent_sbom_doc, MODIFIED_PARENT_SBOM_FILE_PATH):
-        exit(1)
-
-    print(use_contextual)  # Remove this print after this value has a use case
+    # Save modified parent SBOM
+    write_file(parent_sbom_doc, str(MODIFIED_PARENT_SBOM_FILE_PATH), validate=False)
 
 
 if __name__ == "__main__":

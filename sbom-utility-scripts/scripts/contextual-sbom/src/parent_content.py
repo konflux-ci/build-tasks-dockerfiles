@@ -6,29 +6,26 @@ import json
 from typing import Optional
 from json import JSONDecodeError
 
+from spdx_tools.spdx.model.document import Document
+from spdx_tools.spdx.model import RelationshipType
+
 from src.constants import SBOM_DOC, LOGGER, ContentType
 
-from src.utils import find_relationships, modify_relationship
 
-
-def get_used_parent_image_from_legacy_sbom(data: SBOM_DOC) -> Optional[str]:
+def get_used_parent_image_from_legacy_sbom(data: Document) -> Optional[str]:
     """
     Identifies SPDXID of the parent image in legacy non-contextual SBOM.
     Counts on legacy marking in the downloaded parent image SBOM.
 
     Args:
         data:
-            The SBOM data in dictionary format.
-            We cannot use spdx-tools here because after parsing
-            annotations are lost.
+            SPDX Document object containing the annotations.
     Returns:
         SPDXID of the parent image if found, `None` otherwise.
     """
-    for package in data["packages"]:
-        if annotations := package.get("annotations", {}):
-            for annotation in annotations:
-                if annotation.get("comment") == '{"name":"konflux:container:is_base_image","value":"true"}':
-                    return package["SPDXID"]
+    for annotation in data.annotations:
+        if annotation.annotation_comment == '{"name":"konflux:container:is_base_image","value":"true"}':
+            return annotation.spdx_id
 
     LOGGER.debug(
         "[Parent image content] Cannot determine parent of the "
@@ -39,7 +36,7 @@ def get_used_parent_image_from_legacy_sbom(data: SBOM_DOC) -> Optional[str]:
     return None
 
 
-def convert_to_descendant_of_relationship(sbom_doc: SBOM_DOC, grandparent_spdx_id: str) -> SBOM_DOC:
+def convert_to_descendant_of_relationship(sbom_doc: Document, grandparent_spdx_id: str) -> Document:
     """
     This function converts BUILD_TOOL_OF legacy relationship
     of the parent image to the DESCENDANT_OF relationship.
@@ -49,20 +46,17 @@ def convert_to_descendant_of_relationship(sbom_doc: SBOM_DOC, grandparent_spdx_i
 
     Args:
         sbom_doc:
-            The SBOM data in dictionary format.
+            The SBOM data.
         grandparent_spdx_id:
             The SPDXID of the targeted relationship to modify.
     Returns:
-        The modified SBOM document with the DESCENDANT_OF relationship set.
+        The modified SBOM Document with the DESCENDANT_OF relationship set.
     """
     # not filtering a BUILD_TOOL_OF relationship right
     # away here is actually defensive approach and
     # gives us opportunity for more granular error
     # handling in case of inconsistencies in legacy SBOMs
-    original_relationship = find_relationships(
-        sbom_doc["relationships"],
-        search=("spdxElementId", grandparent_spdx_id),
-    )
+    original_relationship = [r for r in sbom_doc.relationships if r.spdx_element_id == grandparent_spdx_id]
 
     if not original_relationship:
         LOGGER.warning(f"[Parent image content] Targeted SPDXID {grandparent_spdx_id} does not bear any relationship!")
@@ -75,8 +69,8 @@ def convert_to_descendant_of_relationship(sbom_doc: SBOM_DOC, grandparent_spdx_i
         )
         return sbom_doc
 
-    original_relationship_type = original_relationship[0]["relationshipType"]
-    if not original_relationship_type == "BUILD_TOOL_OF":
+    original_relationship_type = original_relationship[0].relationship_type
+    if not original_relationship_type == RelationshipType.BUILD_TOOL_OF:
         LOGGER.warning(
             f"[Parent image content] Targeted SPDXID {grandparent_spdx_id} does not bear BUILD_TOOL_OF "
             f"relationship but {original_relationship_type} relationship."
@@ -84,45 +78,31 @@ def convert_to_descendant_of_relationship(sbom_doc: SBOM_DOC, grandparent_spdx_i
         return sbom_doc
 
     # This updates the relationship i.e. BUILD_TOOL_OF -> DESCENDANT_OF
-    sbom_doc = modify_relationship(
-        sbom_doc,
-        search=("spdxElementId", grandparent_spdx_id),
-        modify=("relationshipType", "DESCENDANT_OF"),
-        content_type=ContentType.PARENT.value,
-    )
+    for relationship in sbom_doc.relationships:
+        if relationship.spdx_element_id == grandparent_spdx_id:
+            relationship.relationship_type = RelationshipType.DESCENDANT_OF
 
-    # Following code flips spdxElementId and relatedSpdxElement
-    # It is needed because BUILD_TOOL_OF and DESCENDANT_OF
-    # relationship is contradictory
-    original_related_spdx_element = original_relationship[0]["relatedSpdxElement"]
-    # Transfer spdx_id to relatedSpdxElement
-    sbom_doc = modify_relationship(
-        sbom_doc,
-        search=("spdxElementId", grandparent_spdx_id),
-        modify=("relatedSpdxElement", grandparent_spdx_id),
-        content_type=ContentType.PARENT.value,
-    )
-
-    # Transfer original_related_spdx_element to spdxElementId
-    sbom_doc = modify_relationship(
-        sbom_doc,
-        search=("relatedSpdxElement", grandparent_spdx_id),
-        modify=("spdxElementId", original_related_spdx_element),
-        content_type=ContentType.PARENT.value,
-    )
+            # Following code flips spdxElementId and relatedSpdxElement
+            # It is needed because BUILD_TOOL_OF and DESCENDANT_OF
+            # relationship is contradictory and spdx_tools is not doing it for us
+            original_related_spdx_element = original_relationship[0].related_spdx_element_id
+            relationship.spdx_element_id = original_related_spdx_element
+            relationship.related_spdx_element_id = grandparent_spdx_id
+            LOGGER.debug(
+                f"[{ContentType.PARENT.value}] Modified relationship_type: from "
+                f"BUILD_TOOL_OF to DESCENDANT_OF for spdx_element_id={grandparent_spdx_id}"
+            )
 
     return sbom_doc
 
 
-def adjust_parent_image_relationship_in_legacy_sbom(sbom_doc: SBOM_DOC, grandparent_spdx_id: str) -> SBOM_DOC:
+def adjust_parent_image_relationship_in_legacy_sbom(sbom_doc: Document, grandparent_spdx_id: str) -> SBOM_DOC:
     """
-    Identifies package marked as used parent image in legacy
-    SBOM and modifies its relationship accordingly.
+    Identifies packages marked as used parent image in legacy
+    SBOM and modifies its relationships accordingly.
     Args:
         sbom_doc:
-            The SBOM data in dictionary format.
-            We cannot use spdx-tools here because after parsing
-            annotations are lost.
+            The SBOM data.
         grandparent_spdx_id:
             The SPDXID of the grandparent image of the processed parent image.
     Returns:
@@ -136,7 +116,7 @@ def adjust_parent_image_relationship_in_legacy_sbom(sbom_doc: SBOM_DOC, grandpar
     # this parent (1) and potentially its parents (n) were
     # already contextualized or at least DESCENDANT_OF
     # relationship has been set for its parent.
-    if find_relationships(sbom_doc["relationships"], search=("relationshipType", "DESCENDANT_OF")):
+    if any([r.relationship_type == RelationshipType.DESCENDANT_OF for r in sbom_doc.relationships]):
         LOGGER.debug(
             "[Parent image content] Downloaded parent image content already contains DESCENDANT_OF relationship."
         )
@@ -150,7 +130,7 @@ def adjust_parent_image_relationship_in_legacy_sbom(sbom_doc: SBOM_DOC, grandpar
 
 
 def adjust_parent_image_spdx_element_ids(
-    parent_sbom_doc: SBOM_DOC, component_sbom_doc: SBOM_DOC, grandparent_spdx_id: str
+    parent_sbom_doc: Document, component_sbom_doc: Document, grandparent_spdx_id: str
 ) -> SBOM_DOC:
     """
     This function modifies downloaded used parent image SBOM. We need to
@@ -182,59 +162,56 @@ def adjust_parent_image_spdx_element_ids(
     TODO ISV-5709 OR KONFLUX-3515:
     This function is used for modification of the used parent content
     after resolution and application of the ISV-5709 - we need to have
-    diff first OR during the implementation of KONFLUX-3515
+    diff first OR used for modification during the implementation of
+    KONFLUX-3515
     TODO END
 
     Workflow:
-    1. Obtain parent image name as relatedSpdxElement (or SPDXID)
+    1. Obtain parent image name as related_spdx_element_id (or SPDXID)
     from component SBOM (this expects component SBOM already with
     DESCENDANT_OF correctly set)
-    2. Obtain all packages (CONTAINS) from downloaded parent SBOM
-    that are bearing "spdxElementId": "SPDXRef-image"
-    3. Modify every package spdxElementId from point 2. with value
-    from 1. in downloaded parent SBOM
+    2. Modify every package's spdx_element_id containing CONTAINS
+    and bearing "spdxElementId": "SPDXRef-image" from downloaded
+    parent SBOM with value from step 1.
     """
-    # Get parent name from already built component SBOM, naturally there will be just one
-    parent_name_from_component_sbom = find_relationships(
-        component_sbom_doc["relationships"], search=("relationshipType", "DESCENDANT_OF")
-    )[0]["relatedSpdxElement"]
+    # Get parent name from already built component
+    # SBOM, naturally there will be just one
+    parent_name_from_component_sbom = [
+        r.related_spdx_element_id
+        for r in component_sbom_doc.relationships
+        if r.relationship_type == RelationshipType.DESCENDANT_OF
+    ][0]
 
     # If parent not contextualized: all packages with
-    # CONTAINS relationship are filtered
+    # CONTAINS relationship are modified
     # If parent already contextualized: only packages that belongs
     # to this parent but not to its grandparent representing
-    # component-only content of the parent
+    # component-only content of the parent will be modified
     # (it has already changed spdxElementId, and it is
     # different than SPDXRef-image)
-    component_only_content_of_the_parent = find_relationships(
-        find_relationships(parent_sbom_doc["relationships"], search=("relationshipType", "CONTAINS")),
-        search=("spdxElementId", "SPDXRef-image"),
-    )
+    counter = 0
+    for relationship in parent_sbom_doc.relationships:
+        if (
+            relationship.relationship_type == RelationshipType.CONTAINS
+            and relationship.spdx_element_id == "SPDXRef-image"
+        ):
+            relationship.spdx_element_id = parent_name_from_component_sbom
+            counter += 1
 
-    for relationship in component_only_content_of_the_parent:
-        # this counts on the fact that every relatedSpdxElement
-        # is unique and has only single CONTAINS relationship
-        parent_sbom_doc = modify_relationship(
-            parent_sbom_doc,
-            modify=("spdxElementId", parent_name_from_component_sbom),
-            search=("relatedSpdxElement", relationship["relatedSpdxElement"]),
-            content_type=ContentType.PARENT.value,
-        )
+        # We also need to modify the DESCENDANT_OF relationship
+        # of the parent if grandparent exists saying instead of
+        # SPDXRef-image DESCENDANT_OF grandparent_spdx_id but rather
+        # parent_name_from_component_sbom DESCENDANT_OF grandparent_spdx_id
+        # we do not need to modify the builders of this parent content (BUILD_TOOL_OF),
+        # because they will be removed anyway at later stage from this parent content
+        if grandparent_spdx_id and relationship.related_spdx_element_id == grandparent_spdx_id:
+            relationship.spdx_element_id = parent_name_from_component_sbom
+            counter += 1
 
-    if not grandparent_spdx_id:
-        return parent_sbom_doc
-
-    # we also need to modify the DESCENDANT_OF relationship
-    # of the parent if grandparent exists saying instead of
-    # SPDXRef-image DESCENDANT_OF grandparent_spdx_id but rather
-    # parent_name_from_component_sbom DESCENDANT_OF grandparent_spdx_id
-    # we do not need to modify the builders of this parent content (BUILD_TOOL_OF),
-    # because they will be removed anyway at later stage from this parent content
-    parent_sbom_doc = modify_relationship(
-        parent_sbom_doc,
-        modify=("spdxElementId", parent_name_from_component_sbom),
-        search=("relatedSpdxElement", grandparent_spdx_id),
-        content_type=ContentType.PARENT.value,
+    LOGGER.debug(
+        f"[{ContentType.PARENT.value}] Modified {counter} relationships. "
+        "Transformed spdx_element_id: from SPDXRef-image to"
+        f"{parent_name_from_component_sbom}."
     )
 
     return parent_sbom_doc

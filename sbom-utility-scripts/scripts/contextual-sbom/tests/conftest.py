@@ -2,7 +2,9 @@ from typing import Any
 
 import pytest
 import json
-from unittest.mock import MagicMock
+
+from spdx_tools.spdx.parser.parse_anything import parse_file
+from spdx_tools.spdx.model.document import Document
 
 
 @pytest.fixture(scope="session")
@@ -42,12 +44,10 @@ def sample2_parsed_dockerfile() -> dict[str, Any]:
 
 
 @pytest.fixture(scope="session")
-def spdx_parent_sbom() -> bytes:
-    with open("tests/test_data/fake_parent_sbom/parent_sbom_legacy_with_builder.spdx.json") as json_file:
-        return json.load(json_file)
+def spdx_parent_sbom() -> Document:
+    return parse_file("tests/test_data/fake_parent_sbom/parent_sbom_legacy_with_builder.spdx.json")
 
 
 @pytest.fixture(scope="session")
-def spdx_component_sbom() -> bytes:
-    with open("tests/test_data/fake_component_sbom/component_sbom.spdx.json") as json_file:
-        return json.load(json_file)
+def spdx_component_sbom() -> Document:
+    return parse_file("tests/test_data/fake_component_sbom/component_sbom.spdx.json")
