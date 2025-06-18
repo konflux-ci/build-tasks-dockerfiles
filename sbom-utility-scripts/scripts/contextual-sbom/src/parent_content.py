@@ -129,7 +129,8 @@ def get_content_self_reference(parent_sbom_doc: Document) -> Optional[str]:
         if relationship.relationship_type == RelationshipType.DESCRIBES:
             return relationship.related_spdx_element_id
 
-    raise ValueError("Sbom is missing DESCRIBES relationship")
+    LOGGER.error("Sbom is missing DESCRIBES relationship")
+    exit(1)
 
 
 def adjust_parent_image_spdx_element_ids(
@@ -235,7 +236,7 @@ def download_parent_image_sbom(pullspec: str | None, arch: str) -> SBOM_DOC | No
     """
     if not pullspec:
         LOGGER.debug("No parent image found.")
-        return None
+        exit(0)
 
     skopeo_output = subprocess.run(
         ["/usr/bin/skopeo", "inspect", "--raw", f"docker://{pullspec}"],
@@ -243,15 +244,15 @@ def download_parent_image_sbom(pullspec: str | None, arch: str) -> SBOM_DOC | No
     )
     if not skopeo_output.stdout:
         LOGGER.warning(
-            f"Could not locate manifest of the '{pullspec}'. Raw stderr output: " + skopeo_output.stderr.decode()
+            f"Could not locate manifest of the '{pullspec}'. Raw stderr output: {skopeo_output.stderr.decode()}"
         )
-        return None
+        exit(0)
 
     try:
         inspected_image = json.loads(skopeo_output.stdout)
     except JSONDecodeError:
         LOGGER.warning(f"Invalid image manifest found, cannot parse JSON for pullspec '{pullspec}'.")
-        return None
+        exit(0)
 
     cosign_command = ["/usr/bin/cosign", "download", "sbom", pullspec]
     if inspected_image.get("manifests"):
@@ -263,11 +264,11 @@ def download_parent_image_sbom(pullspec: str | None, arch: str) -> SBOM_DOC | No
 
     if not cmd_result.stdout:
         LOGGER.warning("Could not locate SBOM. Raw stderr output: " + cmd_result.stderr.decode())
-        return None
+        exit(0)
     try:
         result = json.loads(cmd_result.stdout)
         LOGGER.debug(f"Successfully downloaded parent SBOM for pullspec '{pullspec}'.")
         return result
     except JSONDecodeError:
         LOGGER.warning(f"Invalid SBOM found, cannot parse JSON for pullspec '{pullspec}'.")
-        return None
+        exit(0)

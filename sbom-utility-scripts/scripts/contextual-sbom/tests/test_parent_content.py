@@ -163,10 +163,62 @@ def test_download_parent_image_sbom_singlearch(
     mock_logger.debug.assert_any_call("The parent image pullspec does not point to a multiarch image")
 
 
+@patch("src.parent_content.subprocess")
+@patch("src.parent_content.LOGGER")
+def test_download_parent_image_sbom_skopeo_failed(
+    mock_logger: MagicMock,
+    mock_subprocess: MagicMock,
+    spdx_parent_sbom_bytes: bytes,
+    inspected_parent_singlearch: bytes,
+):
+    def mock_subprocess_side_effect(*args, **_):
+        """Mimics the functionality of both skopeo and cosign."""
+        run_result = MagicMock()
+        if args[0][0] == "/usr/bin/cosign":
+            # This simulates cosign
+            run_result.stdout = spdx_parent_sbom_bytes
+        elif args[0][0] == "/usr/bin/skopeo":
+            # This simulates skopeo
+            run_result.stdout = None
+            run_result.stderr = b"something went wrong"
+        return run_result
+
+    mock_subprocess.run.side_effect = mock_subprocess_side_effect
+    with pytest.raises(SystemExit):
+        download_parent_image_sbom("foo", "bar")
+
+    mock_logger.warning.assert_any_call("Could not locate manifest of the 'foo'. Raw stderr output: something went wrong")
+
 @patch("src.parent_content.LOGGER")
 def test_download_parent_image_sbom_no_pullspec(mock_logger: MagicMock, spdx_parent_sbom_bytes: bytes):
-    download_parent_image_sbom(pullspec=None, arch="baroko")
+    with pytest.raises(SystemExit):
+        download_parent_image_sbom(pullspec=None, arch="baroko")
     mock_logger.debug.assert_any_call("No parent image found.")
+
+@patch("src.parent_content.subprocess")
+@patch("src.parent_content.LOGGER")
+def test_download_parent_image_sbom_skopeo_manifest_is_invalid(
+        mock_logger: MagicMock,
+        mock_subprocess: MagicMock,
+        spdx_parent_sbom_bytes: bytes,
+        inspected_parent_singlearch: bytes,
+):
+    def mock_subprocess_side_effect(*args, **_):
+        """Mimics the functionality of both skopeo and cosign."""
+        run_result = MagicMock()
+        if args[0][0] == "/usr/bin/cosign":
+            # This simulates cosign
+            run_result.stdout = spdx_parent_sbom_bytes
+        elif args[0][0] == "/usr/bin/skopeo":
+            # This simulates skopeo
+            run_result.stdout = "{invalid_json}"
+        return run_result
+
+    mock_subprocess.run.side_effect = mock_subprocess_side_effect
+    with pytest.raises(SystemExit):
+        download_parent_image_sbom("foo", "bar")
+
+    mock_logger.warning.assert_any_call("Invalid image manifest found, cannot parse JSON for pullspec 'foo'.")
 
 
 def test__get_sbom_format_unsupported_format():
@@ -198,7 +250,8 @@ def test_download_parent_image_sbom_cosign_fail(
         return run_result
 
     mock_subprocess.run.side_effect = mock_subprocess_side_effect
-    download_parent_image_sbom(pullspec="image", arch="baroko")
+    with pytest.raises(SystemExit):
+        download_parent_image_sbom(pullspec="image", arch="baroko")
     mock_logger.warning.assert_any_call("Could not locate SBOM. Raw stderr output: error")
 
 
@@ -222,7 +275,8 @@ def test_download_parent_image_sbom_sbom_invalid_json(
         return run_result
 
     mock_subprocess.run.side_effect = mock_subprocess_side_effect
-    download_parent_image_sbom(pullspec="image", arch="baroko")
+    with pytest.raises(SystemExit):
+        download_parent_image_sbom(pullspec="image", arch="baroko")
     mock_logger.warning.assert_any_call("Invalid SBOM found, cannot parse JSON for pullspec 'image'.")
 
 
@@ -458,3 +512,23 @@ def test_adjust_parent_image_spdx_element_ids(spdx_parent_sbom: dict[str, Any], 
         adjusted_parent_sbom.relationships[-1].spdx_element_id
         == "SPDXRef-image-parent_sbom_legacy_with_builder.spdx.json"
     )
+
+
+def test_adjust_parent_image_spdx_element_ids_missing_describes_relationship(spdx_parent_sbom: dict[str, Any], spdx_component_sbom: dict[str, Any]):
+    """
+    Downloaded parent SBOM is missing essential DESCRIBES relationship
+    """
+    spdx_parent_edit = deepcopy(spdx_parent_sbom)
+    # DESCENDANT_OF relationship is already set by adjust_parent_image_relationship_in_legacy_sbom_parent
+    spdx_parent_edit.relationships.pop(0)
+
+
+    # The component SBOM is already expected to have DESCENDANT_OF
+    # relationship, because it is produced after implementation of the ISV-5858
+    spdx_component_edit = deepcopy(spdx_component_sbom)
+    grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
+    with pytest.raises(SystemExit):
+        adjust_parent_image_spdx_element_ids(
+            spdx_parent_edit, spdx_component_edit, grandparent_spdx_id
+        )
+

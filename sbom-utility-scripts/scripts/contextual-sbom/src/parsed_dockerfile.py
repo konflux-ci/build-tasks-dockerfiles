@@ -1,5 +1,7 @@
 from typing import Any
 
+from src.utils import LOGGER
+
 
 def get_base_images(parsed_dockerfile: dict[str, Any]) -> list[str | None]:
     """
@@ -85,7 +87,8 @@ def get_parent_image_pullspec(
     """
     base_images = base_images or get_base_images(parsed_dockerfile)
     if not base_images:
-        raise ValueError("The Dockerfile is invalid. There are no stages with pullspecs present!")
+        LOGGER.error("The Dockerfile is invalid. There are no stages with pullspecs present!")
+        exit(1)
     if not target_stage:
         # It's the last base image
         return base_images[-1]
