@@ -78,10 +78,10 @@ def _get_sbom_format(sbom_dict: SBOM_DOC) -> SBOMFormat:
     elif sbom_dict.get("bomFormat") == "CycloneDX" and (spec_version := sbom_dict.get("specVersion")):
         if spec_version.startswith("1."):
             return SBOMFormat.CYCLONEDX1X
-    raise ValueError("Unsupported SBOM format!")
+    return SBOMFormat.UNSUPPORTED
 
 
-def use_contextual_sbom_creation(sbom_doc: SBOM_DOC | None) -> bool:
+def use_contextual_sbom_creation(sbom_doc: SBOM_DOC | None) -> None:
     """
     Based on the SBOM file of a parent image,
     determine if the contextual SBOM mechanism should be used.
@@ -94,11 +94,11 @@ def use_contextual_sbom_creation(sbom_doc: SBOM_DOC | None) -> bool:
     """
     if not sbom_doc:
         LOGGER.debug("Contextual mechanism won't be used, there is no parent image SBOM.")
-        return False
+        exit(0)
     parent_image_sbom_format = _get_sbom_format(sbom_doc)
     if parent_image_sbom_format is SBOMFormat.SPDX2X:
         LOGGER.debug("Contextual mechanism will be used.")
-        return True
+        return
     else:
-        LOGGER.debug("Contextual mechanism won't be used, parent SBOM is in CycloneDX format.")
-        return False
+        LOGGER.debug("Contextual mechanism won't be used, SBOM format is not supported for this workflow.")
+        exit(0)

@@ -29,6 +29,7 @@ class SBOMFormat(Enum):
 
     SPDX2X = "SPDX 2.X"
     CYCLONEDX1X = "CycloneDX 1.X"
+    UNSUPPORTED = "Unsupported"
 
 
 class ContentType(Enum):

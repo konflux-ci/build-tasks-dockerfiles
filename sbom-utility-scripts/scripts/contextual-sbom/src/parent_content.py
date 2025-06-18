@@ -77,21 +77,13 @@ def convert_to_descendant_of_relationship(sbom_doc: Document, grandparent_spdx_i
         )
         return sbom_doc
 
-    # This updates the relationship i.e. BUILD_TOOL_OF -> DESCENDANT_OF
-    for relationship in sbom_doc.relationships:
-        if relationship.spdx_element_id == grandparent_spdx_id:
-            relationship.relationship_type = RelationshipType.DESCENDANT_OF
-
-            # Following code flips spdxElementId and relatedSpdxElement
-            # It is needed because BUILD_TOOL_OF and DESCENDANT_OF
-            # relationship is contradictory and spdx_tools is not doing it for us
-            original_related_spdx_element = original_relationship[0].related_spdx_element_id
-            relationship.spdx_element_id = original_related_spdx_element
-            relationship.related_spdx_element_id = grandparent_spdx_id
-            LOGGER.debug(
-                f"[{ContentType.PARENT.value}] Modified relationship_type: from "
-                f"BUILD_TOOL_OF to DESCENDANT_OF for spdx_element_id={grandparent_spdx_id}"
-            )
+    original_relationship[0].relationship_type = RelationshipType.DESCENDANT_OF
+    original_relationship[0].spdx_element_id = original_relationship[0].related_spdx_element_id
+    original_relationship[0].related_spdx_element_id = grandparent_spdx_id
+    LOGGER.debug(
+        f"[{ContentType.PARENT.value}] Modified relationship_type: from "
+        f"BUILD_TOOL_OF to DESCENDANT_OF for spdx_element_id={grandparent_spdx_id}"
+    )
 
     return sbom_doc
 
@@ -127,6 +119,17 @@ def adjust_parent_image_relationship_in_legacy_sbom(sbom_doc: Document, grandpar
 
     sbom_doc = convert_to_descendant_of_relationship(sbom_doc, grandparent_spdx_id)
     return sbom_doc
+
+
+def get_content_self_reference(parent_sbom_doc: Document) -> Optional[str]:
+    """
+    Get the content self reference.
+    """
+    for relationship in parent_sbom_doc.relationships:
+        if relationship.relationship_type == RelationshipType.DESCRIBES:
+            return relationship.related_spdx_element_id
+
+    raise ValueError("Sbom is missing DESCRIBES relationship")
 
 
 def adjust_parent_image_spdx_element_ids(
@@ -190,10 +193,11 @@ def adjust_parent_image_spdx_element_ids(
     # (it has already changed spdxElementId, and it is
     # different than SPDXRef-image)
     counter = 0
+    parent_self_reference = get_content_self_reference(parent_sbom_doc)
     for relationship in parent_sbom_doc.relationships:
         if (
             relationship.relationship_type == RelationshipType.CONTAINS
-            and relationship.spdx_element_id == "SPDXRef-image"
+            and relationship.spdx_element_id == parent_self_reference
         ):
             relationship.spdx_element_id = parent_name_from_component_sbom
             counter += 1
@@ -210,7 +214,7 @@ def adjust_parent_image_spdx_element_ids(
 
     LOGGER.debug(
         f"[{ContentType.PARENT.value}] Modified {counter} relationships. "
-        "Transformed spdx_element_id: from SPDXRef-image to"
+        "Transformed spdx_element_id: from SPDXRef-image to "
         f"{parent_name_from_component_sbom}."
     )
 
@@ -233,8 +237,21 @@ def download_parent_image_sbom(pullspec: str | None, arch: str) -> SBOM_DOC | No
         LOGGER.debug("No parent image found.")
         return None
 
-    skopeo_output = subprocess.run(["/usr/bin/skopeo", "inspect", "--raw", f"docker://{pullspec}"], capture_output=True)
-    inspected_image = json.loads(skopeo_output.stdout)
+    skopeo_output = subprocess.run(
+        ["/usr/bin/skopeo", "inspect", "--raw", f"docker://{pullspec}"],
+        capture_output=True,
+    )
+    if not skopeo_output.stdout:
+        LOGGER.warning(
+            f"Could not locate manifest of the '{pullspec}'. Raw stderr output: " + skopeo_output.stderr.decode()
+        )
+        return None
+
+    try:
+        inspected_image = json.loads(skopeo_output.stdout)
+    except JSONDecodeError:
+        LOGGER.warning(f"Invalid image manifest found, cannot parse JSON for pullspec '{pullspec}'.")
+        return None
 
     cosign_command = ["/usr/bin/cosign", "download", "sbom", pullspec]
     if inspected_image.get("manifests"):

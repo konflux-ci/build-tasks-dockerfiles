@@ -101,17 +101,25 @@ def test_identify_arch(mock_subprocess: MagicMock, uname_output: bytes, expected
 )
 def test_use_contextual_sbom_creation(sbom_name: str, expected_output: bool):
     path_to_file = Path("tests/test_data/fake_parent_sbom") / sbom_name
-    assert use_contextual_sbom_creation(load_json(path_to_file)) == expected_output
+    if expected_output:
+        assert use_contextual_sbom_creation(load_json(path_to_file)) is None
+    else:
+        with pytest.raises(SystemExit):
+            assert use_contextual_sbom_creation(load_json(path_to_file))
 
 
 def test_use_contextual_sbom_creation_sbom_is_none():
-    assert use_contextual_sbom_creation(None) == False
+    with pytest.raises(SystemExit):
+        assert use_contextual_sbom_creation(None) == False
 
 
 @patch("src.parent_content.subprocess")
 @patch("src.parent_content.LOGGER")
 def test_download_parent_image_sbom_multiarch(
-    mock_logger: MagicMock, mock_subprocess: MagicMock, spdx_parent_sbom_bytes: bytes, inspected_parent_multiarch: bytes
+    mock_logger: MagicMock,
+    mock_subprocess: MagicMock,
+    spdx_parent_sbom_bytes: bytes,
+    inspected_parent_multiarch: bytes,
 ):
     def mock_subprocess_side_effect(*args, **_):
         """Mimics the functionality of both skopeo and cosign."""
@@ -165,11 +173,8 @@ def test__get_sbom_format_unsupported_format():
     """
     Test that an unsupported SBOM format raises a ValueError.
     """
-    with pytest.raises(ValueError, match="Unsupported SBOM format!"):
-        _get_sbom_format({"spdxVersion": "SPDX-3.0"})
-
-    with pytest.raises(ValueError, match="Unsupported SBOM format!"):
-        _get_sbom_format({"bomFormat": "CycloneDX", "specVersion": "2.0"})
+    assert _get_sbom_format({"spdxVersion": "SPDX-3.0"}) == SBOMFormat.UNSUPPORTED
+    assert _get_sbom_format({"bomFormat": "CycloneDX", "specVersion": "2.0"}) == SBOMFormat.UNSUPPORTED
 
 
 @patch("src.parent_content.subprocess")
@@ -221,7 +226,9 @@ def test_download_parent_image_sbom_sbom_invalid_json(
     mock_logger.warning.assert_any_call("Invalid SBOM found, cannot parse JSON for pullspec 'image'.")
 
 
-def test_adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_sbom: dict[str, Any]):
+def test_adjust_parent_image_relationship_in_legacy_sbom(
+    spdx_parent_sbom: dict[str, Any],
+):
     """
     Downloaded parent image has not been contextualized yet,
     but has been produced by legacy SBOM generator in konflux -
@@ -233,7 +240,10 @@ def test_adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_sbom: dict[
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
     relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
     descendant_of_relationship = list(
-        filter(lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF, relationships)
+        filter(
+            lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF,
+            relationships,
+        )
     )
     assert len(descendant_of_relationship) == 1
     assert descendant_of_relationship[0].spdx_element_id == "SPDXRef-image"  # self (downloaded parent image)
@@ -260,7 +270,10 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_no_change(
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
     relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
     descendant_of_relationship = list(
-        filter(lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF, relationships)
+        filter(
+            lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF,
+            relationships,
+        )
     )
     assert len(descendant_of_relationship) == 1
     assert descendant_of_relationship[0].spdx_element_id == "SPDXRef-image"  # self (downloaded parent image)
@@ -289,7 +302,10 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_unknown_relationship(
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
     relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
     descendant_of_relationship = list(
-        filter(lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF, relationships)
+        filter(
+            lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF,
+            relationships,
+        )
     )
     assert len(descendant_of_relationship) == 0
     mock_logger.warning.assert_any_call(
@@ -312,7 +328,10 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_no_relationship(
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
     relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
     descendant_of_relationship = list(
-        filter(lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF, relationships)
+        filter(
+            lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF,
+            relationships,
+        )
     )
     assert len(descendant_of_relationship) == 0
     mock_logger.warning.assert_any_call(
@@ -345,7 +364,10 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_multiple_relationships(
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
     relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
     descendant_of_relationship = list(
-        filter(lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF, relationships)
+        filter(
+            lambda r: r.relationship_type == RelationshipType.DESCENDANT_OF,
+            relationships,
+        )
     )
     assert len(descendant_of_relationship) == 0
     mock_logger.warning.assert_any_call(
@@ -370,7 +392,10 @@ def test_adjust_parent_image_relationship_in_legacy_sbom_parent_not_marked(
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
     relationships = adjust_parent_image_relationship_in_legacy_sbom(spdx_parent_edit, grandparent_spdx_id).relationships
     build_tool_of_relationship = list(
-        filter(lambda r: r.relationship_type == RelationshipType.BUILD_TOOL_OF, relationships)
+        filter(
+            lambda r: r.relationship_type == RelationshipType.BUILD_TOOL_OF,
+            relationships,
+        )
     )
     assert len(build_tool_of_relationship) == 2
     mock_logger.debug.assert_any_call(

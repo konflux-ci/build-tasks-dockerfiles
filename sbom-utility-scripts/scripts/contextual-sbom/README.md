@@ -12,7 +12,7 @@ be used based on presence of the parent image content and its format.
 ### 2. Downloaded parent image content is processed
 <br>
 
-#### Dictionary
+#### Glossary
 **Component image content** - the content of the final component to produced by the
 konflux build. This step does not produce component image content, only assumes
 that it will be produced and mocks it part for manual testing purposes.<br>
@@ -20,8 +20,8 @@ that it will be produced and mocks it part for manual testing purposes.<br>
 **Parent image content** - the content of the parent image that was downloaded, and
 it is modified by this step.<br>
 <br>
-**Grandparent image content** - the parent content of the aforementioned downloaded
-parent. Parent image is expected to be identified by `package.annotations.comment`:
+**Grandparent image content** - the parent content of the aforementioned parent image
+content. Parent image is expected to be identified by `package.annotations.comment`:
 `{"name":"konflux:container:is_base_image","value":"true"}` . Content may or may not
 be identifiable based on the fact if this downloaded parent was or was not
 contextualized. If it was contextualized, it will have a `DESCENDANT_OF` of its parent
@@ -132,7 +132,7 @@ component is "parent-name-in-component-content":
 
     { # grandparent package and we know that because this SBOM was contextualized
       and this package has already proper relationship set with its source
-      "spdxElementId": "registry.access.redhat.com/ubi8", # grandgrandparent image
+      "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi8", # grandgrandparent image
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-grandparent-package"
     },
@@ -155,7 +155,7 @@ component is "parent-name-in-component-content":
     to 
     
     { # unchanged! grandparent content
-      "spdxElementId": "registry.access.redhat.com/ubi8",
+      "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi8",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-grandparent-package"
     },

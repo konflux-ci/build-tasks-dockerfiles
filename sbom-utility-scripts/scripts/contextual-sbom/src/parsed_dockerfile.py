@@ -69,7 +69,7 @@ def get_parent_image_pullspec(
     base_images: list[str | None] | None = None,
 ) -> str | None:
     """
-    Gets the pullspec of the parent image from the parsed SBOM file.
+    Gets the pullspec of the parent image from the parsed Dockerfile.
     Args:
         parsed_dockerfile: The loaded output of `dockerfile-json` command.
             See https://github.com/keilerkonzept/dockerfile-json.

@@ -13,7 +13,11 @@ from src.parent_content import (
 )
 from src.mock import calculate_component_only_content
 from src.parsed_dockerfile import get_base_images, get_parent_image_pullspec
-from src.constants import setup_logger, ORIGINAL_PARENT_SBOM_FILE_PATH, MODIFIED_PARENT_SBOM_FILE_PATH, LOGGER
+from src.constants import (
+    setup_logger,
+    ORIGINAL_PARENT_SBOM_FILE_PATH,
+    MODIFIED_PARENT_SBOM_FILE_PATH,
+)
 from src.mock import get_component_sbom
 
 
@@ -53,12 +57,7 @@ def main():
     if parent_sbom_doc and not save_json(parent_sbom_doc, ORIGINAL_PARENT_SBOM_FILE_PATH):
         exit(1)
 
-    use_contextual = use_contextual_sbom_creation(parent_sbom_doc)
-    if not use_contextual:
-        LOGGER.debug(
-            "Parent image is not present or does not fulfill criteria for contextual SBOM generation. Exiting."
-        )
-        exit(0)
+    use_contextual_sbom_creation(parent_sbom_doc)
 
     parent_sbom_doc = parse_file(str(ORIGINAL_PARENT_SBOM_FILE_PATH))
 
