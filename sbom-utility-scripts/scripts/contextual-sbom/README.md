@@ -10,23 +10,15 @@ image content is downloaded. The script determines the contextual mechanism will
 be used based on presence of the parent image content and its format.
 
 ### 2. Downloaded parent image content is processed
-<br>
+
 
 #### Glossary
-**Component image content** - the content of the final component to produced by the
-konflux build. This step does not produce component image content, only assumes
-that it will be produced and mocks it part for manual testing purposes.<br>
-<br>
-**Parent image content** - the content of the parent image that was downloaded, and
-it is modified by this step.<br>
-<br>
-**Grandparent image content** - the parent content of the aforementioned parent image
-content. Parent image is expected to be identified by `package.annotations.comment`:
-`{"name":"konflux:container:is_base_image","value":"true"}` . Content may or may not
-be identifiable based on the fact if this downloaded parent was or was not
-contextualized. If it was contextualized, it will have a `DESCENDANT_OF` of its parent
-(**grandgrandparent**).<br>
-<br>
+
+| Term | Definition |
+|------|------------|
+| **Component image content** | The content of the final component to produced by the konflux build. This implemented step does not produce component image content, only assumes that it will be produced and mocks it part for manual testing purposes. |
+| **Parent image content** | The content of the parent image that was downloaded, and it is modified by this step. |
+| **Grandparent image content** | The parent content of the aforementioned parent image content. Parent image is expected to be identified by `package.annotations.comment`: `{"name":"konflux:container:is_base_image","value":"true"}` . Content may or may not be identifiable based on the fact if this downloaded parent was or was not contextualized. If it was contextualized, it will have a `DESCENDANT_OF` of its parent (**grandgrandparent**). |
 
 #### Overview of the implementation
 
@@ -48,12 +40,15 @@ If parent image content bears a base image annotation placed in
 into `DESCENDANT_OF` relationship.
 *We just established a proper relationship between parent of this parent (parent
 image and grandparent image).*
-No edit is done, when this parent image si built from scratch or oci-archive,
-or parent SBOM is missing aforementioned `package.annotations.comment` for any
-other reason (like SBOM was not produced by konflux?) OR when the parent image
-content already has a `DESCENDANT_OF` relationship set - it was contextualized.
-This is a sanitation step ensuring that legacy-produced parent content follows
-rules of the contextual SBOM ending up with that parent is properly bounded by
+No edit is done, when this parent image;
+   -  is built from scratch or oci-archive,
+   -  parent SBOM is missing aforementioned `package.annotations.comment` for any
+other reason (like SBOM was not produced by konflux?),
+   - whe the parent image content already has a `DESCENDANT_OF` relationship set -
+   it was contextualized already.
+  
+    In general, this is a sanitation step ensuring that legacy-produced parent content
+follows rules of the contextual SBOM ending up with that parent is properly bounded by
 `DESCENDANT_OF` relationship to its grandparent image, before final contextual
 component content is created. Expected transformation (legacy and/or non-contextual
 parent SBOM):
@@ -74,7 +69,7 @@ parent SBOM):
      "relatedSpdxElement": "SPDXRef-image-registry.access.redhat.com/ubi9", # grandparent image
     }
     ```
-2. **Translation of the self-reference `SPDXRef-image` in downloaded parent content
+2. **Translation of the self-reference (may change but usually `SPDXRef-image`) in downloaded parent content
 to parent name acquired from component**<br>
 Every `spdxElementId` field in relationship in parent image content containing
 `spdxElementId: SPDXRef-image` and `relationshipType: CONTAINS` is edited to bear
@@ -178,7 +173,7 @@ component is "parent-name-in-component-content":
 
 Next steps are not implemented yet:
 - remove builders from `packages` and `relationships` fields
-- remove SPDXRef-document DESCRIBES relationships SPDXRef-image
+- remove SPDXRef-document `DESCRIBES` SPDXRef-image
 relationship before parent will be merged with component content
 - SPIKE explore other relationships that might occur (e.g. OTHER)
 - matching mechanism between parent SPDXRef-image and component

@@ -7,7 +7,7 @@ from typing import Optional
 from json import JSONDecodeError
 
 from spdx_tools.spdx.model.document import Document
-from spdx_tools.spdx.model import RelationshipType
+from spdx_tools.spdx.model.relationship import RelationshipType
 
 from src.constants import SBOM_DOC, LOGGER, ContentType
 
