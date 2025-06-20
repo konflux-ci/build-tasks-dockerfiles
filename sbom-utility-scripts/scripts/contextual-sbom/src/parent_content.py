@@ -101,6 +101,9 @@ def adjust_parent_image_relationship_in_legacy_sbom(sbom_doc: Document, grandpar
         The modified SBOM document with the parent image relationship set
         to DESCENDANT_OF.
     """
+    if not grandparent_spdx_id:
+        return sbom_doc
+
     # When DESCENDANT_OF is present SBOM already
     # has properly assigned relationship with its parent
     # so we do not need to modify it.
@@ -112,9 +115,6 @@ def adjust_parent_image_relationship_in_legacy_sbom(sbom_doc: Document, grandpar
         LOGGER.debug(
             "[Parent image content] Downloaded parent image content already contains DESCENDANT_OF relationship."
         )
-        return sbom_doc
-
-    if not grandparent_spdx_id:
         return sbom_doc
 
     sbom_doc = convert_to_descendant_of_relationship(sbom_doc, grandparent_spdx_id)
@@ -238,18 +238,18 @@ def download_parent_image_sbom(pullspec: str | None, arch: str) -> SBOM_DOC | No
         LOGGER.debug("No parent image found.")
         exit(0)
 
-    skopeo_output = subprocess.run(
-        ["/usr/bin/skopeo", "inspect", "--raw", f"docker://{pullspec}"],
+    oras_output = subprocess.run(
+        ["/usr/bin/oras", "manifest", "fetch", pullspec],
         capture_output=True,
     )
-    if not skopeo_output.stdout:
+    if not oras_output.stdout:
         LOGGER.warning(
-            f"Could not locate manifest of the '{pullspec}'. Raw stderr output: {skopeo_output.stderr.decode()}"
+            f"Could not locate manifest of the '{pullspec}'. Raw stderr output: {oras_output.stderr.decode()}"
         )
         exit(0)
 
     try:
-        inspected_image = json.loads(skopeo_output.stdout)
+        inspected_image = json.loads(oras_output.stdout)
     except JSONDecodeError:
         LOGGER.warning(f"Invalid image manifest found, cannot parse JSON for pullspec '{pullspec}'.")
         exit(0)

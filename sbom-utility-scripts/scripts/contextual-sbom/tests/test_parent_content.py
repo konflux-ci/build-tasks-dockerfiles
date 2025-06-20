@@ -122,13 +122,13 @@ def test_download_parent_image_sbom_multiarch(
     inspected_parent_multiarch: bytes,
 ):
     def mock_subprocess_side_effect(*args, **_):
-        """Mimics the functionality of both skopeo and cosign."""
+        """Mimics the functionality of both oras and cosign."""
         run_result = MagicMock()
         if args[0][0] == "/usr/bin/cosign":
             # This simulates cosign
             run_result.stdout = spdx_parent_sbom_bytes
-        elif args[0][0] == "/usr/bin/skopeo":
-            # This simulates skopeo
+        elif args[0][0] == "/usr/bin/oras":
+            # This simulates oras
             run_result.stdout = inspected_parent_multiarch
         return run_result
 
@@ -147,13 +147,13 @@ def test_download_parent_image_sbom_singlearch(
     inspected_parent_singlearch: bytes,
 ):
     def mock_subprocess_side_effect(*args, **_):
-        """Mimics the functionality of both skopeo and cosign."""
+        """Mimics the functionality of both oras and cosign."""
         run_result = MagicMock()
         if args[0][0] == "/usr/bin/cosign":
             # This simulates cosign
             run_result.stdout = spdx_parent_sbom_bytes
-        elif args[0][0] == "/usr/bin/skopeo":
-            # This simulates skopeo
+        elif args[0][0] == "/usr/bin/oras":
+            # This simulates oras
             run_result.stdout = inspected_parent_singlearch
         return run_result
 
@@ -165,20 +165,20 @@ def test_download_parent_image_sbom_singlearch(
 
 @patch("src.parent_content.subprocess")
 @patch("src.parent_content.LOGGER")
-def test_download_parent_image_sbom_skopeo_failed(
+def test_download_parent_image_sbom_oras_failed(
     mock_logger: MagicMock,
     mock_subprocess: MagicMock,
     spdx_parent_sbom_bytes: bytes,
     inspected_parent_singlearch: bytes,
 ):
     def mock_subprocess_side_effect(*args, **_):
-        """Mimics the functionality of both skopeo and cosign."""
+        """Mimics the functionality of both oras and cosign."""
         run_result = MagicMock()
         if args[0][0] == "/usr/bin/cosign":
             # This simulates cosign
             run_result.stdout = spdx_parent_sbom_bytes
-        elif args[0][0] == "/usr/bin/skopeo":
-            # This simulates skopeo
+        elif args[0][0] == "/usr/bin/oras":
+            # This simulates oras
             run_result.stdout = None
             run_result.stderr = b"something went wrong"
         return run_result
@@ -197,20 +197,20 @@ def test_download_parent_image_sbom_no_pullspec(mock_logger: MagicMock, spdx_par
 
 @patch("src.parent_content.subprocess")
 @patch("src.parent_content.LOGGER")
-def test_download_parent_image_sbom_skopeo_manifest_is_invalid(
+def test_download_parent_image_sbom_oras_manifest_is_invalid(
         mock_logger: MagicMock,
         mock_subprocess: MagicMock,
         spdx_parent_sbom_bytes: bytes,
         inspected_parent_singlearch: bytes,
 ):
     def mock_subprocess_side_effect(*args, **_):
-        """Mimics the functionality of both skopeo and cosign."""
+        """Mimics the functionality of both oras and cosign."""
         run_result = MagicMock()
         if args[0][0] == "/usr/bin/cosign":
             # This simulates cosign
             run_result.stdout = spdx_parent_sbom_bytes
-        elif args[0][0] == "/usr/bin/skopeo":
-            # This simulates skopeo
+        elif args[0][0] == "/usr/bin/oras":
+            # This simulates oras
             run_result.stdout = "{invalid_json}"
         return run_result
 
@@ -238,14 +238,14 @@ def test_download_parent_image_sbom_cosign_fail(
     inspected_parent_singlearch: bytes,
 ):
     def mock_subprocess_side_effect(*args, **_):
-        """Mimics the functionality of both skopeo and cosign."""
+        """Mimics the functionality of both oras and cosign."""
         run_result = MagicMock()
         if args[0][0] == "/usr/bin/cosign":
             # This simulates cosign
             run_result.stdout = b""
             run_result.stderr = b"error"
-        elif args[0][0] == "/usr/bin/skopeo":
-            # This simulates skopeo
+        elif args[0][0] == "/usr/bin/oras":
+            # This simulates oras
             run_result.stdout = inspected_parent_singlearch
         return run_result
 
@@ -264,13 +264,13 @@ def test_download_parent_image_sbom_sbom_invalid_json(
     inspected_parent_singlearch: bytes,
 ):
     def mock_subprocess_side_effect(*args, **_):
-        """Mimics the functionality of both skopeo and cosign."""
+        """Mimics the functionality of both oras and cosign."""
         run_result = MagicMock()
         if args[0][0] == "/usr/bin/cosign":
             # This simulates cosign
             run_result.stdout = b"invalid json"
-        elif args[0][0] == "/usr/bin/skopeo":
-            # This simulates skopeo
+        elif args[0][0] == "/usr/bin/oras":
+            # This simulates oras
             run_result.stdout = inspected_parent_singlearch
         return run_result
 
