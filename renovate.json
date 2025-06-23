@@ -8,5 +8,15 @@
       "depNameTemplate": "containers/BuildSourceImage",
       "extractVersionTemplate": "^v(?<version>.*)(: .+)?$"
     }
+  ],
+  "packageRules": [
+    {
+      "groupName": "python requirements",
+      "description": "Group Python requirements-(dev|test).txt update into a single PR",
+      "matchFileNames": [
+        "**/requirements-dev.txt",
+        "**/requirements-test.txt"
+      ]
+    }
   ]
 }
