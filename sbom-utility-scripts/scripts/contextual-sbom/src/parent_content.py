@@ -272,3 +272,27 @@ def download_parent_image_sbom(pullspec: str | None, arch: str) -> SBOM_DOC | No
     except JSONDecodeError:
         LOGGER.warning(f"Invalid SBOM found, cannot parse JSON for pullspec '{pullspec}'.")
         exit(0)
+
+
+def remove_parent_image_builder_records(parent_sbom_doc: Document) -> SBOM_DOC:
+    """
+    Remove BUILD_TOOL_OF packages and relationships from parent image.
+    Note: This must only be done after the parent image's DESCENDANT_OF relationship has been updated.
+    """
+    build_tool_ids = []
+    new_relationships = []
+    for relationship in parent_sbom_doc.relationships:
+        if relationship.relationship_type == RelationshipType.BUILD_TOOL_OF:
+            build_tool_ids.append(relationship.spdx_element_id)
+        else:
+            new_relationships.append(relationship)
+    LOGGER.debug(f"Removing BUILD_TOOL_OF relationships and packages for {build_tool_ids}")
+    parent_sbom_doc.relationships = new_relationships
+
+    new_packages = [p for p in parent_sbom_doc.packages if p.spdx_id not in build_tool_ids]
+    parent_sbom_doc.packages = new_packages
+    # annotations have to be explicitly removed, or they'll remain in a detached list
+    new_annotations = [a for a in parent_sbom_doc.annotations if a.spdx_id not in build_tool_ids]
+    parent_sbom_doc.annotations = new_annotations
+
+    return parent_sbom_doc
