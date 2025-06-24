@@ -49,5 +49,10 @@ def spdx_parent_sbom() -> Document:
 
 
 @pytest.fixture(scope="session")
+def spdx_parent_sbom_builder_removed() -> Document:
+    return parse_file("tests/test_data/fake_parent_sbom/parent_sbom_legacy_builder_removed.spdx.json")
+
+
+@pytest.fixture(scope="session")
 def spdx_component_sbom() -> Document:
     return parse_file("tests/test_data/fake_component_sbom/component_sbom.spdx.json")

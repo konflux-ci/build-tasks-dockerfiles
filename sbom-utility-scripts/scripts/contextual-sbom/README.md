@@ -4,7 +4,7 @@
 
 ## Implemented steps:
 
-### 1. Parent image content is downloaded 
+### 1. Parent image content is downloaded
 The parent image is identified, runtime architecture is identified and parent
 image content is downloaded. The script determines the contextual mechanism will
 be used based on presence of the parent image content and its format.
@@ -46,7 +46,7 @@ No edit is done, when this parent image;
 other reason (like SBOM was not produced by konflux?),
    - whe the parent image content already has a `DESCENDANT_OF` relationship set -
    it was contextualized already.
-  
+
     In general, this is a sanitation step ensuring that legacy-produced parent content
 follows rules of the contextual SBOM ending up with that parent is properly bounded by
 `DESCENDANT_OF` relationship to its grandparent image, before final contextual
@@ -100,9 +100,9 @@ component is "parent-name-in-component-content":
      "relationshipType": "DESCENDANT_OF",
      "relatedSpdxElement": "SPDXRef-image-registry.access.redhat.com/ubi9", # grandparent image
     }
-    
-    to 
-    
+
+    to
+
     { # parent content (we cannot differentiate grandparent, because as said this parent SBOM was not contextualized)
      "spdxElementId": "SPDXRef-parent-name-in-component-content", # this downloaded parent image - name from component
      "relationshipType": "CONTAINS",
@@ -136,7 +136,7 @@ component is "parent-name-in-component-content":
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-parent-package"
     },
-    { 
+    {
       "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi9", # grandparent image
       "relationshipType": "DESCENDANT_OF",
       "relatedSpdxElement": "registry.access.redhat.com/ubi8", # grandgrandparent image
@@ -146,9 +146,9 @@ component is "parent-name-in-component-content":
       "relationshipType": "DESCENDANT_OF",
       "relatedSpdxElement": "SPDXRef-image-registry.access.redhat.com/ubi9", # grandparent image
     }
-    
-    to 
-    
+
+    to
+
     { # unchanged! grandparent content
       "spdxElementId": "SPDXRef-image-registry.access.redhat.com/ubi8",
       "relationshipType": "CONTAINS",
@@ -171,8 +171,11 @@ component is "parent-name-in-component-content":
     }
     ```
 
+3. **Remove builders from `packages` and `relationships` fields**<br>
+Any relationship with the `relationshipType` "BUILD_TOOL_OF" is removed from the
+parent image content, along with the packages associated with those relationships.
+
 Next steps are not implemented yet:
-- remove builders from `packages` and `relationships` fields
 - remove SPDXRef-document `DESCRIBES` SPDXRef-image
 relationship before parent will be merged with component content
 - SPIKE explore other relationships that might occur (e.g. OTHER)

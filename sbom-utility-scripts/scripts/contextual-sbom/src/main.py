@@ -10,6 +10,7 @@ from src.parent_content import (
     adjust_parent_image_spdx_element_ids,
     download_parent_image_sbom,
     get_used_parent_image_from_legacy_sbom,
+    remove_parent_image_builder_records,
 )
 from src.mock import calculate_component_only_content
 from src.parsed_dockerfile import get_base_images, get_parent_image_pullspec
@@ -69,6 +70,7 @@ def main():
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(parent_sbom_doc)
     parent_sbom_doc = adjust_parent_image_relationship_in_legacy_sbom(parent_sbom_doc, grandparent_spdx_id)
     parent_sbom_doc = adjust_parent_image_spdx_element_ids(parent_sbom_doc, component_sbom_doc, grandparent_spdx_id)
+    parent_sbom_doc = remove_parent_image_builder_records(parent_sbom_doc)
 
     # Save modified parent SBOM
     write_file(parent_sbom_doc, str(MODIFIED_PARENT_SBOM_FILE_PATH), validate=False)
