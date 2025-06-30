@@ -14,7 +14,6 @@ from src.parent_content import (
     adjust_parent_image_spdx_element_ids,
     get_used_parent_image_from_legacy_sbom,
     remove_parent_image_builder_records,
-        remove_parent_image_builder_records,
 )
 from src.utils import (
     identify_arch,
