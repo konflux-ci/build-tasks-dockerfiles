@@ -1,0 +1,4 @@
+packages: [python3.11, git, jq, skopeo, file, tar]
+contentOrigin:
+  repofiles: ["./ubi.repo"]
+arches: [x86_64]
