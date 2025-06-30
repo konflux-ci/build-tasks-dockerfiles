@@ -13,6 +13,7 @@ from src.parent_content import (
     adjust_parent_image_relationship_in_legacy_sbom,
     adjust_parent_image_spdx_element_ids,
     get_used_parent_image_from_legacy_sbom,
+    remove_parent_image_builder_records,
 )
 from src.utils import (
     identify_arch,
@@ -187,13 +188,17 @@ def test_download_parent_image_sbom_oras_failed(
     with pytest.raises(SystemExit):
         download_parent_image_sbom("foo", "bar")
 
-    mock_logger.warning.assert_any_call("Could not locate manifest of the 'foo'. Raw stderr output: something went wrong")
+    mock_logger.warning.assert_any_call(
+        "Could not locate manifest of the 'foo'. Raw stderr output: something went wrong"
+    )
+
 
 @patch("src.parent_content.LOGGER")
 def test_download_parent_image_sbom_no_pullspec(mock_logger: MagicMock, spdx_parent_sbom_bytes: bytes):
     with pytest.raises(SystemExit):
         download_parent_image_sbom(pullspec=None, arch="baroko")
     mock_logger.debug.assert_any_call("No parent image found.")
+
 
 @patch("src.parent_content.subprocess")
 @patch("src.parent_content.LOGGER")
@@ -514,7 +519,9 @@ def test_adjust_parent_image_spdx_element_ids(spdx_parent_sbom: dict[str, Any], 
     )
 
 
-def test_adjust_parent_image_spdx_element_ids_missing_describes_relationship(spdx_parent_sbom: dict[str, Any], spdx_component_sbom: dict[str, Any]):
+def test_adjust_parent_image_spdx_element_ids_missing_describes_relationship(
+    spdx_parent_sbom: dict[str, Any], spdx_component_sbom: dict[str, Any]
+):
     """
     Downloaded parent SBOM is missing essential DESCRIBES relationship
     """
@@ -522,13 +529,18 @@ def test_adjust_parent_image_spdx_element_ids_missing_describes_relationship(spd
     # DESCENDANT_OF relationship is already set by adjust_parent_image_relationship_in_legacy_sbom_parent
     spdx_parent_edit.relationships.pop(0)
 
-
     # The component SBOM is already expected to have DESCENDANT_OF
     # relationship, because it is produced after implementation of the ISV-5858
     spdx_component_edit = deepcopy(spdx_component_sbom)
     grandparent_spdx_id = get_used_parent_image_from_legacy_sbom(spdx_parent_edit)
     with pytest.raises(SystemExit):
-        adjust_parent_image_spdx_element_ids(
-            spdx_parent_edit, spdx_component_edit, grandparent_spdx_id
-        )
+        adjust_parent_image_spdx_element_ids(spdx_parent_edit, spdx_component_edit, grandparent_spdx_id)
+
+
+def test_remove_parent_image_builder_records(
+    spdx_parent_sbom: dict[str, Any], spdx_parent_sbom_builder_removed: dict[str, Any]
+):
+    spdx_parent_sbom_edit = deepcopy(spdx_parent_sbom)
+    spdx_parent_sbom_edit = remove_parent_image_builder_records(spdx_parent_sbom_edit)
+    assert spdx_parent_sbom_edit == spdx_parent_sbom_builder_removed
 
