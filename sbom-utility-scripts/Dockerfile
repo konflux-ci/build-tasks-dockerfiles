@@ -28,4 +28,4 @@ RUN pip3 install --no-cache-dir \
     -r index-image-sbom-script-requirements.txt \
     -r add-image-reference-requirements.txt \
     -r sbom-for-oci-copy-task-requirements.txt \
-    -r sbom-for-modelcar-task-requirements.txt \
+    -r sbom-for-modelcar-task-requirements.txt
