@@ -36,6 +36,18 @@ spec:
     value: sbom-utility-scripts
   - name: build-source-image
     value: "true"
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value: '[
+      {"type": "pip", "path": "sbom-utility-scripts"},
+      {"type": "pip", "path": "sbom-utility-scripts/scripts/add-image-reference-script"},
+      {"type": "pip", "path": "sbom-utility-scripts/scripts/base-images-sbom-script/app"},
+      {"type": "pip", "path": "sbom-utility-scripts/scripts/index-image-sbom-script"},
+      {"type": "pip", "path": "sbom-utility-scripts/scripts/merge-sboms-script"},
+      {"type": "pip", "path": "sbom-utility-scripts/scripts/sbom-for-modelcar-task"},
+      {"type": "pip", "path": "sbom-utility-scripts/scripts/sbom-for-oci-copy-task"}
+    ]'
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
