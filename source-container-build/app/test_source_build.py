@@ -20,13 +20,15 @@ from pathlib import Path
 
 import source_build
 from source_build import BuildResult, DescriptorT, SourceImageBuildDirectories, BSILayer
+from source_build import ImageRef
 from test_utils import BlobTypeString, create_simple_oci_image
 
 import pytest
 
 
 FAKE_BSI: Final = "/testing/bsi"
-OUTPUT_BINARY_IMAGE: Final = "registry/ns/app:v1"
+BINARY_IMAGE_DIGEST: Final = "sha256:87e8e87"
+BINARY_IMAGE_REF: Final = f"registry/ns/app:v1@{BINARY_IMAGE_DIGEST}"
 REPO_NAME: Final = "sourcebuildapp"
 REGISTRY_ALLOWLIST: Final = """
 registry.example.io
@@ -623,7 +625,6 @@ class TestGatherPrefetchedSources(unittest.TestCase):
 class TestBuildProcess(unittest.TestCase):
     """Test build process primarily but not the details of every portion"""
 
-    BINARY_IMAGE_MANIFEST_DIGEST: Final = "sha256:87e8e87"
     FAKE_IMAGE_DIGEST: Final = "40b2a5f7e477"
     PIP_PKG: Final = "requests-1.2.3.tar.gz"
     app_source_dirs = AppSourceDirs("", "", "")
@@ -677,8 +678,8 @@ class TestBuildProcess(unittest.TestCase):
             self.bsi,
             "--source-dir",
             self.app_source_dirs.cloned_dir,
-            "--output-binary-image",
-            OUTPUT_BINARY_IMAGE,
+            "--binary-image-ref",
+            BINARY_IMAGE_REF,
             "--registry-allowlist",
             REGISTRY_ALLOWLIST,
         ]
@@ -711,8 +712,8 @@ class TestBuildProcess(unittest.TestCase):
             self.result_file,
             "--source-dir",
             invalid_git_repo,
-            "--output-binary-image",
-            OUTPUT_BINARY_IMAGE,
+            "--binary-image-ref",
+            BINARY_IMAGE_REF,
             "--registry-allowlist",
             REGISTRY_ALLOWLIST,
         ]
@@ -775,6 +776,7 @@ class TestBuildProcess(unittest.TestCase):
         expect_parent_image_sources_included: bool = False,
         mock_nonexisting_source_image: bool = False,
         source_image_is_resolved_by_version_release: bool = True,
+        binary_image_does_not_exist_any_more=False,
     ):
         """Test include various sources and app source will always be included"""
 
@@ -817,7 +819,7 @@ class TestBuildProcess(unittest.TestCase):
                 case ["skopeo", "inspect", "--raw", *_]:
                     if not source_image_is_resolved_by_version_release:
                         dest_image = cmd[-1]
-                        source_tag = self.BINARY_IMAGE_MANIFEST_DIGEST.replace(":", "-") + ".src"
+                        source_tag = BINARY_IMAGE_DIGEST.replace(":", "-") + ".src"
                         self.assertTrue(dest_image.endswith(source_tag))
 
                     # Indicate the source image of parent image exists
@@ -827,8 +829,13 @@ class TestBuildProcess(unittest.TestCase):
                         return CompletedProcess(cmd, int(mock_nonexisting_source_image))
 
                 case ["skopeo", "inspect", "--format", *_]:
-                    # Get image manifest
-                    return CompletedProcess(cmd, 0, stdout=self.BINARY_IMAGE_MANIFEST_DIGEST)
+                    if binary_image_does_not_exist_any_more:
+                        ref = source_build.parse_image_name(BINARY_IMAGE_REF)
+                        stderr = f"reading manifest {ref.digest} in {ref.repo}: manifest unknown"
+                        raise CalledProcessError(-1, "mock cmd", stderr=stderr.encode())
+                    else:
+                        # Get the binary image manifest digest
+                        return CompletedProcess(cmd, 0, stdout=BINARY_IMAGE_DIGEST)
 
                 case ["skopeo", "copy", *_]:
                     args = create_skopeo_cli_parser().parse_args(cmd[1:])
@@ -879,8 +886,8 @@ class TestBuildProcess(unittest.TestCase):
             self.bsi,
             "--source-dir",
             self.app_source_dirs.cloned_dir,
-            "--output-binary-image",
-            OUTPUT_BINARY_IMAGE,
+            "--binary-image-ref",
+            BINARY_IMAGE_REF,
             "--write-result-to",
             self.result_file,
             "--registry-allowlist",
@@ -921,24 +928,33 @@ class TestBuildProcess(unittest.TestCase):
         build_result: BuildResult
         with open(self.result_file, "r") as f:
             build_result = json.loads(f.read())
-        self.assertEqual("success", build_result["status"])
+
         self.assertEqual(
             expect_parent_image_sources_included, build_result["base_image_source_included"]
         )
         self.assertEqual(include_prefetched_sources, build_result["dependencies_included"])
-        self.assertEqual(self.FAKE_IMAGE_DIGEST, build_result["image_digest"])
-        self.assertNotIn(
-            "message",
-            build_result,
-            "this test is for successful run, result should not include message field.",
-        )
 
-        image_repo = OUTPUT_BINARY_IMAGE.split(":")[0]
-        image_tag = f"{self.BINARY_IMAGE_MANIFEST_DIGEST.replace(':', '-')}.src"
-        expected_source_image = f"{image_repo}:{image_tag}"
-        self.assertEqual(expected_source_image, build_result["image_url"])
+        if binary_image_does_not_exist_any_more:
+            self.assertEqual("drop", build_result["status"])
+            self.assertEqual("", build_result["image_url"])
+            self.assertEqual("", build_result["image_digest"])
+            expected_msg = f"Original image {BINARY_IMAGE_REF} does not exist anymore."
+            self.assertIn(expected_msg, build_result["message"])
+        else:
+            self.assertEqual("success", build_result["status"])
+            self.assertNotIn(
+                "message",
+                build_result,
+                "this test is for successful run, result should not include message field.",
+            )
 
-        self.assertListEqual([expected_source_image], pushed_images)
+            image_repo = BINARY_IMAGE_REF.split(":")[0]
+            image_tag = f"{BINARY_IMAGE_DIGEST.replace(':', '-')}.src"
+            expected_source_image = f"{image_repo}:{image_tag}"
+            self.assertEqual(expected_source_image, build_result["image_url"])
+
+            self.assertEqual(self.FAKE_IMAGE_DIGEST, build_result["image_digest"])
+            self.assertListEqual([expected_source_image], pushed_images)
 
     def test_just_include_app_source(self):
         self._test_include_sources()
@@ -1016,8 +1032,8 @@ class TestBuildProcess(unittest.TestCase):
             self.bsi,
             "--source-dir",
             self.app_source_dirs.cloned_dir,
-            "--output-binary-image",
-            OUTPUT_BINARY_IMAGE,
+            "--binary-image-ref",
+            BINARY_IMAGE_REF,
             "--registry-allowlist",
             REGISTRY_ALLOWLIST,
         ]
@@ -1049,8 +1065,8 @@ class TestBuildProcess(unittest.TestCase):
             self.result_file,
             "--source-dir",
             self.app_source_dirs.cloned_dir,
-            "--output-binary-image",
-            OUTPUT_BINARY_IMAGE,
+            "--binary-image-ref",
+            BINARY_IMAGE_REF,
         ]
         with patch("sys.argv", cli_cmd):
             with self.assertRaises(SystemExit):
@@ -1075,8 +1091,8 @@ class TestBuildProcess(unittest.TestCase):
             self.result_file,
             "--source-dir",
             self.app_source_dirs.cloned_dir,
-            "--output-binary-image",
-            OUTPUT_BINARY_IMAGE,
+            "--binary-image-ref",
+            BINARY_IMAGE_REF,
         ]
         with patch("sys.argv", cli_cmd):
             with self.assertRaises(SystemExit):
@@ -1096,12 +1112,20 @@ class TestBuildProcess(unittest.TestCase):
             self.result_file,
             "--source-dir",
             self.app_source_dirs.cloned_dir,
-            "--output-binary-image",
-            OUTPUT_BINARY_IMAGE,
+            "--binary-image-ref",
+            BINARY_IMAGE_REF,
         ]
         with patch("sys.argv", cli_cmd):
             with self.assertRaises(SystemExit):
                 source_build.main()
+
+    @patch("time.sleep", return_value=None)  # boost backoff
+    def test_binary_image_does_not_exist_when_ready_to_push(self, sleep):
+        self._test_include_sources(
+            parent_images="\ngolang:2\n\nregistry.access.example.com/ubi9/ubi:9.3-1\n",
+            expect_parent_image_sources_included=True,
+            binary_image_does_not_exist_any_more=True,
+        )
 
 
 class TestResolveSourceImageByVersionRelease(unittest.TestCase):
@@ -1124,7 +1148,7 @@ class TestResolveSourceImageByVersionRelease(unittest.TestCase):
             run.side_effect = [skopeo_inspect_rv]
 
             with self.assertLogs(f"{source_build.logger.name}.resolve_source_image") as logs:
-                result = source_build.resolve_source_image_by_version_release(OUTPUT_BINARY_IMAGE)
+                result = source_build.resolve_source_image_by_version_release(BINARY_IMAGE_REF)
             self.assertIsNone(result)
             self.assertIn("is not labelled with version and release", "\n".join(logs.output))
 
@@ -1136,7 +1160,7 @@ class TestResolveSourceImageByVersionRelease(unittest.TestCase):
         )
         run.side_effect = [skopeo_inspect_config_rv, self.called_proc_err]
 
-        result = source_build.resolve_source_image_by_version_release(OUTPUT_BINARY_IMAGE)
+        result = source_build.resolve_source_image_by_version_release(BINARY_IMAGE_REF)
         self.assertIsNone(result)
 
     @patch("source_build.run")
@@ -1149,22 +1173,31 @@ class TestResolveSourceImageByVersionRelease(unittest.TestCase):
         skopeo_inspect_raw_rv.returncode = 0
         run.side_effect = [skopeo_inspect_config_rv, skopeo_inspect_raw_rv]
 
-        source_image = source_build.resolve_source_image_by_version_release(OUTPUT_BINARY_IMAGE)
+        source_image = source_build.resolve_source_image_by_version_release(BINARY_IMAGE_REF)
 
-        expected_source_image = OUTPUT_BINARY_IMAGE.split(":")[0] + ":9.3-1-source"
+        expected_source_image = BINARY_IMAGE_REF.split(":")[0] + ":9.3-1-source"
         self.assertEqual(expected_source_image, source_image)
 
 
 @pytest.mark.parametrize(
     "image_pullspec,expected",
     [
-        ["ubuntu", ("ubuntu", "", "")],
-        ["reg:3000", ("reg", "3000", "")],
-        ["reg:3000/img:9.3", ("reg:3000/img", "9.3", "")],
-        ["reg:3000/img:9.3@sha256:123", ("reg:3000/img", "9.3", "sha256:123")],
-        ["reg/org/img:9.3@sha256:123", ("reg/org/img", "9.3", "sha256:123")],
-        ["reg/org/path/img:9.3", ("reg/org/path/img", "9.3", "")],
-        ["reg/org/path/img:9.3@sha256:123", ("reg/org/path/img", "9.3", "sha256:123")],
+        ["ubuntu", ImageRef(repo="ubuntu", tag="", digest="")],
+        ["reg:3000", ImageRef(repo="reg", tag="3000", digest="")],
+        ["reg:3000/img:9.3", ImageRef(repo="reg:3000/img", tag="9.3", digest="")],
+        [
+            "reg:3000/img:9.3@sha256:123",
+            ImageRef(repo="reg:3000/img", tag="9.3", digest="sha256:123"),
+        ],
+        [
+            "reg/org/img:9.3@sha256:123",
+            ImageRef(repo="reg/org/img", tag="9.3", digest="sha256:123"),
+        ],
+        ["reg/org/path/img:9.3", ImageRef(repo="reg/org/path/img", tag="9.3", digest="")],
+        [
+            "reg/org/path/img:9.3@sha256:123",
+            ImageRef(repo="reg/org/path/img", tag="9.3", digest="sha256:123"),
+        ],
     ],
 )
 def test_parse_image_name(image_pullspec, expected):
@@ -1279,7 +1312,7 @@ class TestResolveSourceImageByManifest(unittest.TestCase):
             ["registry.io:3000/ns/app:1.0", "registry.io:3000/ns/app:1.0"],
             [
                 f"registry.io:3000/ns/app:1.0@{manifest_digest}",
-                f"registry.io:3000/ns/app@{manifest_digest}",
+                None,  # skip fetching digest again
             ],
         ]
 
@@ -1287,15 +1320,22 @@ class TestResolveSourceImageByManifest(unittest.TestCase):
             with patch("source_build.run") as mock_run:
                 skopeo_inspect_digest_rv = Mock(stdout=manifest_digest)
                 skopeo_inspect_raw_rv = Mock(returncode=0)
-                mock_run.side_effect = [skopeo_inspect_digest_rv, skopeo_inspect_raw_rv]
+
+                if expected_skopeo_dest_arg is None:
+                    # Input binary image already has image digest in reference,
+                    # skip fetching manifest digest again
+                    mock_run.side_effect = [skopeo_inspect_raw_rv]
+                else:
+                    mock_run.side_effect = [skopeo_inspect_digest_rv, skopeo_inspect_raw_rv]
 
                 source_image = source_build.resolve_source_image_by_manifest(binary_image)
 
                 self.assertEqual("registry.io:3000/ns/app:sha256-123456.src", source_image)
 
-                run_cmd = mock_run.mock_calls[0].args[0]
-                dest = run_cmd[-1]
-                self.assertEqual(dest.removeprefix("docker://"), expected_skopeo_dest_arg)
+                if expected_skopeo_dest_arg is not None:
+                    run_cmd = mock_run.mock_calls[0].args[0]
+                    dest = run_cmd[-1]
+                    self.assertEqual(dest.removeprefix("docker://"), expected_skopeo_dest_arg)
 
     @patch("source_build.run")
     def test_source_image_does_not_exist(self, mock_run: MagicMock):
@@ -1304,7 +1344,6 @@ class TestResolveSourceImageByManifest(unittest.TestCase):
         mock_run.side_effect = [skopeo_inspect_digest_rv, self.called_proc_err]
 
         source_image = source_build.resolve_source_image_by_manifest("registry.io:3000/ns/app:1.0")
-
         self.assertIsNone(source_image)
 
 

@@ -54,7 +54,7 @@ StrPath = str | os.PathLike
 
 
 class BuildResult(TypedDict):
-    status: Literal["failure", "success"]
+    status: Literal["failure", "success", "drop"]
     message: NotRequired[str]
     dependencies_included: bool
     base_image_source_included: bool
@@ -75,6 +75,36 @@ class SourceImageBuildDirectories:
 class RepoInfo(TypedDict):
     name: str
     last_commit_sha: str
+
+
+@dataclass
+class ImageRef:
+    repo: str
+    tag: str
+    digest: str
+
+    @property
+    def uri(self) -> str:
+        if self.digest:
+            return f"{self.repo}@{self.digest}"
+        if self.tag:
+            return f"{self.repo}:{self.tag}"
+        return self.repo
+
+    @property
+    def uri_pinned_by_digest(self) -> str:
+        if self.digest:
+            return f"{self.repo}@{self.digest}"
+        raise ValueError("Missing digest")
+
+    @property
+    def full_uri(self) -> str:
+        uri = self.repo
+        if self.tag:
+            uri = f"{uri}:{self.tag}"
+        if self.digest:
+            uri = f"{uri}@{self.digest}"
+        return uri
 
 
 def arg_type_path(value):
@@ -98,6 +128,13 @@ def arg_type_base_images(value):
 
 def arg_type_registry_allowlist(value: str) -> list[str]:
     return [line for line in value.splitlines() if line]
+
+
+def arg_type_image_ref(value: str) -> "ImageRef":
+    ref = parse_image_name(value)
+    if not ref.digest:
+        raise argparse.ArgumentTypeError(f"Missing digest in image reference {value}.")
+    return ref
 
 
 def get_repo_info(repo_path: str) -> RepoInfo:
@@ -140,10 +177,11 @@ def parse_cli_args():
         help="Path to the directory holding source code from which to build the binary image.",
     )
     parser.add_argument(
-        "--output-binary-image",
+        "--binary-image-ref",
         required=True,
+        type=arg_type_image_ref,
         metavar="IMAGE",
-        help="The output binary image used to generate source image.",
+        help="Image reference to the binary image with at least digest.",
     )
     parser.add_argument(
         "--base-images",
@@ -470,25 +508,8 @@ def push_to_registry(image_build_output_dir: str, dest_images: list[str]) -> str
         return f.read().strip()
 
 
-def generate_konflux_source_image(image: str) -> str:
-    # in format: sha256:1234567
-    name, tag, digest = parse_image_name(image)
-    if digest:
-        cleaned_image = f"{name}@{digest}"
-    else:
-        cleaned_image = f"{name}:{tag}"
-    digest = fetch_image_manifest_digest(cleaned_image)
-    return f"{name}:{digest.replace(':', '-')}.src"
-
-
-def generate_source_images(image: str) -> list[str]:
-    """Generate source container images from the built binary image
-
-    :param image: str, represent the built image.
-    :return: list of generated source container images.
-    """
-    source_image = generate_konflux_source_image(image)
-    return [source_image]
+def generate_konflux_source_image(repo: str, digest: str) -> str:
+    return f"{repo}:{digest.replace(':', '-')}.src"
 
 
 def resolve_source_image_by_version_release(binary_image: str) -> str | None:
@@ -499,8 +520,8 @@ def resolve_source_image_by_version_release(binary_image: str) -> str | None:
     :return: the resolved source image. If no source image is resolved, None is returned.
     """
     log = logging.getLogger(f"{logger.name}.resolve_source_image")
-    name, _, digest = parse_image_name(binary_image)
-    image_config = fetch_image_config(f"{name}@{digest}")
+    ref = parse_image_name(binary_image)
+    image_config = fetch_image_config(f"{ref.repo}@{ref.digest}")
     config_data = json.loads(image_config)
     version = config_data["config"]["Labels"].get("version")
     release = config_data["config"]["Labels"].get("release")
@@ -508,7 +529,7 @@ def resolve_source_image_by_version_release(binary_image: str) -> str | None:
         log.warning("Image %s is not labelled with version and release.", binary_image)
         return None
     # Remove possible tag or digest from binary image
-    source_image = f"{name}:{version}-{release}-source"
+    source_image = f"{ref.repo}:{version}-{release}-source"
     if registry_has_image(source_image):
         return source_image
     else:
@@ -521,7 +542,9 @@ def resolve_source_image_by_manifest(image: str) -> str | None:
     :param image: str, a binary image whose source image is resolved.
     :return: the resolved source image URL. If no one is resolved, None is returned.
     """
-    source_image = generate_konflux_source_image(image)
+    ref = parse_image_name(image)
+    image_digest = ref.digest or fetch_image_manifest_digest(ref.uri)
+    source_image = generate_konflux_source_image(ref.repo, image_digest)
     if registry_has_image(source_image):
         return source_image
     else:
@@ -545,7 +568,7 @@ def resolve_source_image(binary_image: str, registries_allow_list: list[str]) ->
     return resolve_source_image_by_manifest(binary_image)
 
 
-def parse_image_name(image: str) -> tuple[str, str, str]:
+def parse_image_name(image: str) -> ImageRef:
     """Rough image name parser
 
     This does not aim to be a generic image name parser and just handle the
@@ -560,7 +583,7 @@ def parse_image_name(image: str) -> tuple[str, str, str]:
     name = parts[0]
     if len(parts) > 1:
         tag = parts[1]
-    return name, tag, digest
+    return ImageRef(repo=name, tag=tag, digest=digest)
 
 
 def download_parent_image_sources(
@@ -1154,9 +1177,6 @@ def build(args) -> BuildResult:
             "Cachi2 artifacts directory is not specified. Skip handling the prefetched sources."
         )
 
-    dest_images = generate_source_images(args.output_binary_image)
-    build_result["image_url"] = dest_images[-1]
-
     image_output_dir = build_source_image_in_local(args.bsi, work_dir, sib_dirs)
     if parent_sources_dir:
         if build_result["dependencies_included"]:
@@ -1164,6 +1184,26 @@ def build(args) -> BuildResult:
         merge_image(parent_sources_dir, image_output_dir)
         build_result["base_image_source_included"] = True
 
+    binary_image_ref: ImageRef = args.binary_image_ref
+    try:
+        image_digest = fetch_image_manifest_digest(binary_image_ref.uri_pinned_by_digest)
+    except CalledProcessError as e:
+        repo = binary_image_ref.repo
+        digest = binary_image_ref.digest
+        expected_msg = f"reading manifest {digest} in {repo}: manifest unknown"
+        if expected_msg in e.stderr.decode():
+            msg = (
+                f"Original image {binary_image_ref.full_uri} does not exist anymore. "
+                "Stop pushing the built source image."
+            )
+            logger.info(msg)
+            build_result["status"] = "drop"
+            build_result["message"] = msg
+            return build_result
+        raise
+
+    dest_images = [generate_konflux_source_image(binary_image_ref.repo, binary_image_ref.digest)]
+    build_result["image_url"] = dest_images[-1]
     image_digest = push_to_registry(image_output_dir, dest_images)
     build_result["image_digest"] = image_digest
     return build_result
@@ -1190,7 +1230,8 @@ def main() -> int:
     else:
         logger.info("no result file is specified. Skip writing build result into a file.")
 
-    if build_result["status"] == "success":
+    status = build_result["status"]
+    if status == "success" or status == "drop":
         return 0
     return 1
 
