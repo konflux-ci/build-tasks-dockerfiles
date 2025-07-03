@@ -37,6 +37,14 @@ spec:
     value: source-container-build
   - name: build-source-image
     value: "true"
+  - name: hermetic
+    value: "true"
+  - name: prefetch-input
+    value: '[
+      {"type": "pip", "path": "source-container-build/app"},
+      {"type": "generic", "path": "source-container-build"},
+      {"type": "rpm", "path": "source-container-build"}
+    ]'
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
