@@ -34,7 +34,7 @@ spec:
       - name: APP_SUFFIX
         value: "$(params.app_suffix)"
       - name: COMPONENT_REPO_URLS
-        value: "https://github.com/konflux-qe-bd/source-build-parent-image-with-digest-only,https://github.com/konflux-qe-bd/source-build-use-latest-parent-image,https://github.com/konflux-qe-bd/source-build-parent-image-from-registry-rh-io,https://github.com/konflux-qe-bd/source-build-base-on-konflux-image"
+        value: "https://github.com/konflux-qe-bd/source-build-parent-image-with-digest-only"
       - name: QUAY_E2E_ORGANIZATION
         value: redhat-appstudio-qe
       - name: E2E_APPLICATIONS_NAMESPACE
