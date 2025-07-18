@@ -124,18 +124,18 @@ def create_skopeo_cli_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def create_fake_dep_packages(cachi2_output_dir: str, deps: list[str]) -> None:
+def create_fake_dep_packages(prefetch_output_dir: str, deps: list[str]) -> None:
     """Create fake prefetched dependency packages
 
-    :param str cachi2_output_dir: path to cachi2 output directory.
+    :param str prefetch_output_dir: path to hermeto output directory.
     :param deps: list of dependency packages. Each of them is in form package_manager/package,
         e.g. pip/requests-1.0.0.tar.gz
-    :type cachi2_output_dir: list[str]
+    :type prefetch_output_dir: list[str]
     """
     for package in deps:
         # pip/, npm/, or gomod/.../.../.../...
         pkg_mgr_path, filename = os.path.split(package)
-        packages_dir = os.path.join(cachi2_output_dir, "deps", pkg_mgr_path)
+        packages_dir = os.path.join(prefetch_output_dir, "deps", pkg_mgr_path)
         os.makedirs(packages_dir, exist_ok=True)
         if filename.endswith(".tar.gz") or filename.endswith(".tgz"):
             with tarfile.open(os.path.join(packages_dir, filename), "w:gz"):
@@ -148,10 +148,10 @@ def create_fake_dep_packages(cachi2_output_dir: str, deps: list[str]) -> None:
                 f.write("any data")
 
 
-def create_fake_dep_packages_with_content(cachi2_output_dir: str, deps: dict[str, bytes]) -> None:
+def create_fake_dep_packages_with_content(prefetch_output_dir: str, deps: dict[str, bytes]) -> None:
     for package, content in deps.items():
         pkg_mgr_path, filename = os.path.split(package)
-        packages_dir = os.path.join(cachi2_output_dir, "deps", pkg_mgr_path)
+        packages_dir = os.path.join(prefetch_output_dir, "deps", pkg_mgr_path)
         os.makedirs(packages_dir, exist_ok=True)
         if filename.endswith(".rpm"):
             with open(os.path.join(packages_dir, filename), "wb") as f:
@@ -282,9 +282,7 @@ class TestMakeSourceArchive(unittest.TestCase):
 
     def test_git_process_fail(self):
         with self.assertRaises(CalledProcessError):
-            source_build.make_source_archive(
-                self.work_dir, self.invalid_source_dir, SourceImageBuildDirectories()
-            )
+            source_build.make_source_archive(self.work_dir, self.invalid_source_dir, SourceImageBuildDirectories())
 
 
 class TestBuildSourceInLocal(unittest.TestCase):
@@ -431,58 +429,54 @@ class TestGatherPrefetchedSources(unittest.TestCase):
 
     def setUp(self):
         self.work_dir = mkdtemp()
-        self.cachi2_dir = mkdtemp()
+        self.prefetch_dir = mkdtemp()
 
     def tearDown(self):
         shutil.rmtree(self.work_dir)
-        shutil.rmtree(self.cachi2_dir)
+        shutil.rmtree(self.prefetch_dir)
 
-    def _mark_cachi2_has_run(self):
-        self.cachi2_output_dir = os.path.join(self.cachi2_dir, "output")
-        os.mkdir(self.cachi2_output_dir)
+    def _mark_prefetch_has_run(self):
+        self.prefetch_output_dir = os.path.join(self.prefetch_dir, "output")
+        os.mkdir(self.prefetch_output_dir)
 
     def test_prefetch_did_not_run(self):
         sib_dirs = SourceImageBuildDirectories()
-        result = source_build.gather_prefetched_sources(self.work_dir, self.cachi2_dir, sib_dirs)
+        result = source_build.gather_prefetched_sources(self.work_dir, self.prefetch_dir, sib_dirs)
         self.assertFalse(result)
         self.assertListEqual([], sib_dirs.extra_src_dirs)
 
     def test_no_deps_in_prefetch_output_dir(self):
         sib_dirs = SourceImageBuildDirectories()
-        self._mark_cachi2_has_run()
-        result = source_build.gather_prefetched_sources(self.work_dir, self.cachi2_dir, sib_dirs)
+        self._mark_prefetch_has_run()
+        result = source_build.gather_prefetched_sources(self.work_dir, self.prefetch_dir, sib_dirs)
         self.assertFalse(result)
         self.assertListEqual([], sib_dirs.extra_src_dirs)
 
-    def test_include_cachi2_env_file(self):
+    def test_include_prefetch_env_file(self):
         """
-        Not all cachi2 package manager generates cachi2.env, but if there is,
-        it should be included as an extra source.
+        Not all hermeto backends require an environment variables file (e.g. hermeto.env) to be
+        generated, but if one is needed, it should be included as an extra source.
         """
         sib_dirs = SourceImageBuildDirectories()
-        self._mark_cachi2_has_run()
-        with open(os.path.join(self.cachi2_dir, "cachi2.env"), "w") as f:
+        self._mark_prefetch_has_run()
+        with open(os.path.join(self.prefetch_dir, "prefetch.env"), "w") as f:
             f.write("no matter what the content is")
 
-        result = source_build.gather_prefetched_sources(self.work_dir, self.cachi2_dir, sib_dirs)
+        result = source_build.gather_prefetched_sources(self.work_dir, self.prefetch_dir, sib_dirs)
 
         self.assertFalse(result)
-        self.assertListEqual([os.path.join(self.work_dir, "cachi2_env")], sib_dirs.extra_src_dirs)
+        self.assertListEqual([os.path.join(self.work_dir, "prefetch_env")], sib_dirs.extra_src_dirs)
 
     def _test_gather_deps_by_package_manager(self, fetched_deps: list[str], dep_exts: list[str]):
-        self._mark_cachi2_has_run()
-        create_fake_dep_packages(self.cachi2_output_dir, fetched_deps)
+        self._mark_prefetch_has_run()
+        create_fake_dep_packages(self.prefetch_output_dir, fetched_deps)
 
         sib_dirs = SourceImageBuildDirectories()
-        result = source_build.gather_prefetched_sources(self.work_dir, self.cachi2_dir, sib_dirs)
+        result = source_build.gather_prefetched_sources(self.work_dir, self.prefetch_dir, sib_dirs)
         self.assertTrue(result)
 
         def _has_known_file_ext(filename: str) -> bool:
-            return (
-                filename.endswith(".tar.gz")
-                or filename.endswith(".tgz")
-                or filename.endswith(".zip")
-            )
+            return filename.endswith(".tar.gz") or filename.endswith(".tgz") or filename.endswith(".zip")
 
         # Remove the noise introduced by test on gomod package manager
         deps_with_known_file_ext = [item for item in fetched_deps if _has_known_file_ext(item)]
@@ -507,12 +501,12 @@ class TestGatherPrefetchedSources(unittest.TestCase):
         )
 
     def _test_gather_srpm_deps(self, fetched_deps: dict[str, bytes], expected_deps: list[str]):
-        self._mark_cachi2_has_run()
-        create_fake_dep_packages_with_content(self.cachi2_output_dir, fetched_deps)
+        self._mark_prefetch_has_run()
+        create_fake_dep_packages_with_content(self.prefetch_output_dir, fetched_deps)
 
         sib_dirs = SourceImageBuildDirectories()
         sib_dirs.rpm_dir = mkdtemp()
-        result = source_build.gather_prefetched_sources(self.work_dir, self.cachi2_dir, sib_dirs)
+        result = source_build.gather_prefetched_sources(self.work_dir, self.prefetch_dir, sib_dirs)
         self.assertTrue(result)
 
         gathered_srpm_deps = []  # collect the srpm dep packages gathered by the method
@@ -530,7 +524,7 @@ class TestGatherPrefetchedSources(unittest.TestCase):
     def test_gather_pip_deps_with_external_dependency(self):
         """
         If a pip dependency is specified directly, for example one that is fetched from
-        github instead of pypi, then cachi2 will not put the dependency directly in the pip
+        github instead of pypi, then hermeto will not put the dependency directly in the pip
         directory. Instead, it will create subdirectory with the prefix "external".
         """
         pip_deps = [
@@ -565,9 +559,7 @@ class TestGatherPrefetchedSources(unittest.TestCase):
             "output/x86_64/fedora/gpm-libs-1.20.7-42.fc38.x86_64.rpm": os.urandom(4),
         }
 
-        self._test_gather_srpm_deps(
-            srpm_deps, ["gpm-1.20.7-42.fc38.src.rpm", "vim-9.1.113-1.fc38.src.rpm"]
-        )
+        self._test_gather_srpm_deps(srpm_deps, ["gpm-1.20.7-42.fc38.src.rpm", "vim-9.1.113-1.fc38.src.rpm"])
 
     def test_gather_srpm_deps_collision_same_content(self):
         srpm_deps = {
@@ -582,9 +574,7 @@ class TestGatherPrefetchedSources(unittest.TestCase):
             "output/x86_64/fedora/gpm-libs-1.20.7-42.fc38.x86_64.rpm": os.urandom(4),
         }
 
-        self._test_gather_srpm_deps(
-            srpm_deps, ["gpm-1.20.7-42.fc38.src.rpm", "vim-9.1.113-1.fc38.src.rpm"]
-        )
+        self._test_gather_srpm_deps(srpm_deps, ["gpm-1.20.7-42.fc38.src.rpm", "vim-9.1.113-1.fc38.src.rpm"])
 
     def test_gather_srpm_deps_collision_unique_content(self):
         srpm_deps = {
@@ -604,8 +594,7 @@ class TestGatherPrefetchedSources(unittest.TestCase):
             [
                 "gpm-1.20.7-42.fc38.src.rpm",
                 "vim-9.1.113-1.fc38.src.rpm",
-                "66ab0431683e4f376291ebd90d9f1f5e579063"
-                + "e185e77f7260c341d5d3c77ff8-vim-9.1.113-1.fc38.src.rpm",
+                "66ab0431683e4f376291ebd90d9f1f5e579063" + "e185e77f7260c341d5d3c77ff8-vim-9.1.113-1.fc38.src.rpm",
             ],
         )
 
@@ -628,20 +617,20 @@ class TestBuildProcess(unittest.TestCase):
     FAKE_IMAGE_DIGEST: Final = "40b2a5f7e477"
     PIP_PKG: Final = "requests-1.2.3.tar.gz"
     app_source_dirs = AppSourceDirs("", "", "")
-    cachi2_dir = ""
+    prefetch_dir = ""
 
     @classmethod
     def setUpClass(cls):
         cls.app_source_dirs = init_app_source_repo_dir()
 
-        cls.cachi2_dir = mkdtemp("-cachi2")
-        cachi2_output_dir = os.path.join(cls.cachi2_dir, "output")
-        os.mkdir(cachi2_output_dir)
-        create_fake_dep_packages(cachi2_output_dir, [os.path.join("pip", cls.PIP_PKG)])
+        cls.prefetch_dir = mkdtemp("-prefetch")
+        prefetch_output_dir = os.path.join(cls.prefetch_dir, "output")
+        os.mkdir(prefetch_output_dir)
+        create_fake_dep_packages(prefetch_output_dir, [os.path.join("pip", cls.PIP_PKG)])
 
     @classmethod
     def tearDownClass(cls):
-        shutil.rmtree(cls.cachi2_dir)
+        shutil.rmtree(cls.prefetch_dir)
         shutil.rmtree(cls.app_source_dirs.root_dir)
 
     def setUp(self):
@@ -723,9 +712,7 @@ class TestBuildProcess(unittest.TestCase):
                 rc = source_build.main()
 
         self.assertEqual(1, rc)
-        self.assertRegex(
-            "\n".join(logs.output), r"command execution failure, status: \d+, stderr: .+"
-        )
+        self.assertRegex("\n".join(logs.output), r"command execution failure, status: \d+, stderr: .+")
 
         with open(self.result_file, "r") as f:
             build_result: BuildResult = json.loads(f.read())
@@ -805,9 +792,7 @@ class TestBuildProcess(unittest.TestCase):
                 case ["skopeo", "inspect", "--config", *_]:
                     if parent_images:
                         dest_image = cmd[-1]
-                        self.assertNotIn(
-                            ":9.3-1", dest_image, "tag is not removed from image pullspec"
-                        )
+                        self.assertNotIn(":9.3-1", dest_image, "tag is not removed from image pullspec")
 
                     # Get image config
                     if source_image_is_resolved_by_version_release:
@@ -894,8 +879,8 @@ class TestBuildProcess(unittest.TestCase):
             REGISTRY_ALLOWLIST,
         ]
         if include_prefetched_sources:
-            cli_cmd.append("--cachi2-artifacts-dir")
-            cli_cmd.append(self.cachi2_dir)
+            cli_cmd.append("--prefetch-artifacts-dir")
+            cli_cmd.append(self.prefetch_dir)
 
         if parent_images:
             cli_cmd.append("--base-images")
@@ -929,9 +914,7 @@ class TestBuildProcess(unittest.TestCase):
         with open(self.result_file, "r") as f:
             build_result = json.loads(f.read())
 
-        self.assertEqual(
-            expect_parent_image_sources_included, build_result["base_image_source_included"]
-        )
+        self.assertEqual(expect_parent_image_sources_included, build_result["base_image_source_included"])
         self.assertEqual(include_prefetched_sources, build_result["dependencies_included"])
 
         if binary_image_does_not_exist_any_more:
@@ -1007,9 +990,7 @@ class TestBuildProcess(unittest.TestCase):
             localhost/konflux-final-image@sha256:123
             """
         )
-        self._test_include_sources(
-            parent_images=parent_images, expect_parent_image_sources_included=False
-        )
+        self._test_include_sources(parent_images=parent_images, expect_parent_image_sources_included=False)
 
     @patch("source_build.run")
     def test_create_a_temp_dir_as_workspace(self, run):
@@ -1155,9 +1136,7 @@ class TestResolveSourceImageByVersionRelease(unittest.TestCase):
     @patch("source_build.run")
     def test_image_does_not_have_source_image(self, run: MagicMock):
         skopeo_inspect_config_rv = Mock()
-        skopeo_inspect_config_rv.stdout = json.dumps(
-            {"config": {"Labels": {"version": "9.3", "release": "1"}}}
-        )
+        skopeo_inspect_config_rv.stdout = json.dumps({"config": {"Labels": {"version": "9.3", "release": "1"}}})
         run.side_effect = [skopeo_inspect_config_rv, self.called_proc_err]
 
         result = source_build.resolve_source_image_by_version_release(BINARY_IMAGE_REF)
@@ -1166,9 +1145,7 @@ class TestResolveSourceImageByVersionRelease(unittest.TestCase):
     @patch("source_build.run")
     def test_source_image_is_resolved(self, run: MagicMock):
         skopeo_inspect_config_rv = Mock()
-        skopeo_inspect_config_rv.stdout = json.dumps(
-            {"config": {"Labels": {"version": "9.3", "release": "1"}}}
-        )
+        skopeo_inspect_config_rv.stdout = json.dumps({"config": {"Labels": {"version": "9.3", "release": "1"}}})
         skopeo_inspect_raw_rv = Mock()
         skopeo_inspect_raw_rv.returncode = 0
         run.side_effect = [skopeo_inspect_config_rv, skopeo_inspect_raw_rv]
@@ -1271,8 +1248,7 @@ class TestDeduplicateSources(unittest.TestCase):
 
         expected = sorted(["libxml2-2.3-10.src.rpm", "pcre2-10.40-2.el9.src.rpm"])
         remains_in_local_build: Final = sorted(
-            os.path.basename(BSILayer(layer).symlink_member.name)
-            for layer in local_source_manifest.layers
+            os.path.basename(BSILayer(layer).symlink_member.name) for layer in local_source_manifest.layers
         )
         self.assertListEqual(expected, remains_in_local_build)
 
