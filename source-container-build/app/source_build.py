@@ -326,26 +326,26 @@ def create_dir(*components) -> str:
     return path
 
 
-def gather_prefetched_sources(work_dir: str, cachi2_dir: str, sib_dirs: SourceImageBuildDirectories) -> bool:
+def gather_prefetched_sources(work_dir: str, prefetch_dir: str, sib_dirs: SourceImageBuildDirectories) -> bool:
     log = logging.getLogger("source-build.prefetched-sources")
     gathered = False
 
     # Guess if hermetic build is enabled
-    # NOTE: this guess does depend on how cachi2 runs inside prefetch-dependencies task.
-    cachi2_output_dir = f"{cachi2_dir}/output"
-    cachi2_deps_dir = os.path.join(cachi2_output_dir, "deps")
+    # NOTE: this guess does depend on how hermeto runs inside prefetch-dependencies task.
+    prefetch_output_dir = f"{prefetch_dir}/output"
+    prefetch_deps_dir = os.path.join(prefetch_output_dir, "deps")
 
-    if not os.path.isdir(cachi2_output_dir):
-        log.info("Cannot find cachi2 output directory at %s", cachi2_output_dir)
+    if not os.path.isdir(prefetch_output_dir):
+        log.info("Cannot find prefetch output directory at %s", prefetch_output_dir)
         return gathered
 
     def _find_prefetch_source_archives() -> Dict[str, str]:
-        used_package_managers = os.listdir(cachi2_deps_dir) if os.path.exists(cachi2_deps_dir) else []
+        used_package_managers = os.listdir(prefetch_deps_dir) if os.path.exists(prefetch_deps_dir) else []
         guess_mime = filetype.guess_mime
         prefetched_sources = defaultdict(list)
 
         for package_manager in used_package_managers:
-            package_manager_dir = os.path.join(cachi2_deps_dir, package_manager)
+            package_manager_dir = os.path.join(prefetch_deps_dir, package_manager)
             for root, _, files in os.walk(package_manager_dir):
                 for filename in files:
                     filepath = os.path.join(root, filename)
@@ -357,7 +357,7 @@ def gather_prefetched_sources(work_dir: str, cachi2_dir: str, sib_dirs: SourceIm
 
     def _find_prefetch_srpm_archives():
         guess_mime = filetype.guess_mime
-        for root, dirs, files in os.walk(cachi2_output_dir):
+        for root, dirs, files in os.walk(prefetch_output_dir):
             dirs.sort()
             for filename in sorted(files):
                 if filename.endswith(".src.rpm"):
@@ -373,7 +373,7 @@ def gather_prefetched_sources(work_dir: str, cachi2_dir: str, sib_dirs: SourceIm
         copy_dest_dir = f"{prepared_sources_dir}/{src_dir}/deps/{package_manager}"
 
         for src_filepath in filepaths:
-            relative_path_to_src = os.path.relpath(src_filepath, f"{cachi2_deps_dir}/{package_manager}")
+            relative_path_to_src = os.path.relpath(src_filepath, f"{prefetch_deps_dir}/{package_manager}")
             dest_dirs = os.path.join(copy_dest_dir, os.path.dirname(relative_path_to_src))
             os.makedirs(dest_dirs, exist_ok=True)
             dest = f"{copy_dest_dir}/{relative_path_to_src}"
@@ -402,12 +402,12 @@ def gather_prefetched_sources(work_dir: str, cachi2_dir: str, sib_dirs: SourceIm
     if not gathered:
         log.info("There is no prefetched source archive.")
 
-    cachi2_env = f"{cachi2_dir}/cachi2.env"
-    if os.path.exists(cachi2_env):
-        prepared_env_dir = create_dir(work_dir, "cachi2_env")
-        src = cachi2_env
-        dest = f"{prepared_env_dir}/cachi2.env"
-        log.debug("copy cachi2 env file %s to %s", src, dest)
+    prefetch_env = f"{prefetch_dir}/prefetch.env"
+    if os.path.exists(prefetch_env):
+        prepared_env_dir = create_dir(work_dir, "prefetch_env")
+        src = prefetch_env
+        dest = f"{prepared_env_dir}/prefetch.env"
+        log.debug("copy prefetch env file %s to %s", src, dest)
         shutil.copy(src, dest)
         sib_dirs.extra_src_dirs.append(prepared_env_dir)
 
@@ -1148,7 +1148,7 @@ def build(args) -> BuildResult:
         included = gather_prefetched_sources(work_dir, args.cachi2_artifacts_dir, sib_dirs)
         build_result["dependencies_included"] = included
     else:
-        logger.info("Cachi2 artifacts directory is not specified. Skip handling the prefetched sources.")
+        logger.info("Prefetch artifacts directory is not specified. Skip handling the prefetched sources.")
 
     image_output_dir = build_source_image_in_local(args.bsi, work_dir, sib_dirs)
     if parent_sources_dir:
