@@ -879,7 +879,7 @@ class TestBuildProcess(unittest.TestCase):
             REGISTRY_ALLOWLIST,
         ]
         if include_prefetched_sources:
-            cli_cmd.append("--cachi2-artifacts-dir")
+            cli_cmd.append("--prefetch-artifacts-dir")
             cli_cmd.append(self.prefetch_dir)
 
         if parent_images:

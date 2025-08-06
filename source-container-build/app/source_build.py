@@ -194,18 +194,6 @@ def parse_cli_args():
         "skip handling sources of base image.",
     )
     parser.add_argument(
-        "--cachi2-artifacts-dir",
-        metavar="PATH",
-        help="Path to Cachi2 directory which is the output directory populated by fetch-deps "
-        "command and the generated environment file.",
-    )
-    parser.add_argument(
-        "--prefetch-artifacts-dir",
-        metavar="PATH",
-        help="Path to a prefetch directory which is the output directory populated by fetch-deps "
-        "command and the generated environment file.",
-    )
-    parser.add_argument(
         "--write-result-to",
         metavar="FILE",
         dest="result_file",
@@ -221,6 +209,17 @@ def parse_cli_args():
         "--ignore-unsigned-image",
         action="store_true",
         help="When provided, the build will not fail when source image has missing signatures",
+    )
+
+    mutex_group = parser.add_mutually_exclusive_group()
+    mutex_group.add_argument(
+        "--cachi2-artifacts-dir", metavar="PATH", help="[DEPRECATED] Alias to '--prefetch-artifacts-dir'"
+    )
+    mutex_group.add_argument(
+        "--prefetch-artifacts-dir",
+        metavar="PATH",
+        help="Path to a prefetch directory which is the output directory populated by fetch-deps "
+        "command and the generated environment file.",
     )
     return parser.parse_args()
 
@@ -1150,8 +1149,13 @@ def build(args) -> BuildResult:
     else:
         logger.info("No base image is specified. Skip handling sources of base image.")
 
-    if args.cachi2_artifacts_dir:
-        included = gather_prefetched_sources(work_dir, args.cachi2_artifacts_dir, sib_dirs)
+    if args.prefetch_artifacts_dir or args.cachi2_artifacts_dir:
+        if args.cachi2_artifacts_dir:
+            logger.warning(
+                "'--cachi2-artifacts-dir' option is deprecated, please use '--prefetch-artifacts-dir' instead"
+            )
+
+        included = gather_prefetched_sources(work_dir, args.prefetch_artifacts_dir, sib_dirs)
         build_result["dependencies_included"] = included
     else:
         logger.info("Prefetch artifacts directory is not specified. Skip handling the prefetched sources.")
