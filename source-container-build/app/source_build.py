@@ -200,6 +200,12 @@ def parse_cli_args():
         "command and the generated environment file.",
     )
     parser.add_argument(
+        "--prefetch-artifacts-dir",
+        metavar="PATH",
+        help="Path to a prefetch directory which is the output directory populated by fetch-deps "
+        "command and the generated environment file.",
+    )
+    parser.add_argument(
         "--write-result-to",
         metavar="FILE",
         dest="result_file",
