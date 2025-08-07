@@ -105,9 +105,7 @@ def create_layer_archive(
 
             os.mkdir(source_driver)
             extra_src_archive = extra_src_files[int(next(extra_src_file_idx))]
-            Path(source_driver, extra_src_archive).symlink_to(
-                Path("..", "blobs", "sha256", checksum)
-            )
+            Path(source_driver, extra_src_archive).symlink_to(Path("..", "blobs", "sha256", checksum))
         else:
             raise ValueError("Unknown source driver. This should not happen.")
 
@@ -143,9 +141,7 @@ def oci_image_blob_dir(path: StrPath, algorithm="sha256") -> Path:
     return blob_dir
 
 
-def oci_image_write_blob(
-    image_path: StrPath, data: bytes | str, _type: BlobTypeString
-) -> DescriptorT:
+def oci_image_write_blob(image_path: StrPath, data: bytes | str, _type: BlobTypeString) -> DescriptorT:
     s = data if isinstance(data, bytes) else data.encode("utf-8")
     checksum = hashlib.sha256(s).hexdigest()
     size = oci_image_blob_dir(image_path).joinpath(checksum).write_bytes(s)
