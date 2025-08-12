@@ -4,7 +4,7 @@
 #
 #    pip-compile
 #
-packageurl-python==0.17.1
+packageurl-python==0.17.5
     # via -r requirements.in
 pyyaml==6.0.2
     # via -r requirements.in
