@@ -262,27 +262,6 @@ def fetch_image_config(image: str) -> str:
     max_tries=SUBPROCESS_MAX_RETRIES + 1,  # total tries is N retries + 1 initial attempt
     jitter=None,
 )
-def fetch_image_manifest_digest(image: str) -> str:
-    cmd = [
-        "skopeo",
-        "inspect",
-        "--format",
-        "{{.Digest}}",
-        "--no-tags",
-        "--retry-times",
-        str(MAX_RETRIES),
-        f"docker://{image}",
-    ]
-    return run(cmd, check=True, text=True, capture_output=True).stdout.strip()
-
-
-@backoff.on_exception(
-    backoff.expo,
-    CalledProcessError,
-    factor=SUBPROCESS_BACKOFF_FACTOR,
-    max_tries=SUBPROCESS_MAX_RETRIES + 1,  # total tries is N retries + 1 initial attempt
-    jitter=None,
-)
 def skopeo_copy(
     src: str,
     dest: str,
@@ -536,8 +515,9 @@ def resolve_source_image_by_manifest(image: str) -> str | None:
     :return: the resolved source image URL. If no one is resolved, None is returned.
     """
     ref = parse_image_name(image)
-    image_digest = ref.digest or fetch_image_manifest_digest(ref.uri)
-    source_image = generate_konflux_source_image(ref.repo, image_digest)
+    if not ref.digest:
+        raise ValueError(f"{image} is missing a digest")
+    source_image = generate_konflux_source_image(ref.repo, ref.digest)
     if registry_has_image(source_image):
         return source_image
     else:
@@ -1168,22 +1148,15 @@ def build(args) -> BuildResult:
         build_result["base_image_source_included"] = True
 
     binary_image_ref: ImageRef = args.binary_image_ref
-    try:
-        image_digest = fetch_image_manifest_digest(binary_image_ref.uri_pinned_by_digest)
-    except CalledProcessError as e:
-        repo = binary_image_ref.repo
-        digest = binary_image_ref.digest
-        expected_msg = f"reading manifest {digest} in {repo}: manifest unknown"
-        if expected_msg in e.stderr.decode():
-            msg = (
-                f"Original image {binary_image_ref.full_uri} does not exist anymore. "
-                "Stop pushing the built source image."
-            )
-            logger.info(msg)
-            build_result["status"] = "drop"
-            build_result["message"] = msg
-            return build_result
-        raise
+    if not registry_has_image(binary_image_ref.uri_pinned_by_digest):
+        msg = (
+            f"Original image {binary_image_ref.full_uri} does not exist anymore. "
+            "Stop pushing the built source image."
+        )
+        logger.info(msg)
+        build_result["status"] = "drop"
+        build_result["message"] = msg
+        return build_result
 
     dest_images = [generate_konflux_source_image(binary_image_ref.repo, binary_image_ref.digest)]
     build_result["image_url"] = dest_images[-1]

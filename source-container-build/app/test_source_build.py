@@ -801,6 +801,16 @@ class TestBuildProcess(unittest.TestCase):
                         config = {"config": {"Labels": {}}}
                     return CompletedProcess(cmd, 0, stdout=json.dumps(config))
 
+                # Checking if the binary image exists
+                case ["skopeo", "inspect", "--raw", *_] if cmd[-1].endswith(BINARY_IMAGE_DIGEST):
+                    if binary_image_does_not_exist_any_more:
+                        ref = source_build.parse_image_name(BINARY_IMAGE_REF)
+                        stderr = f"reading manifest {ref.digest} in {ref.repo}: manifest unknown"
+                        raise CalledProcessError(-1, "mock cmd", stderr=stderr.encode())
+                    else:
+                        return CompletedProcess(cmd, 0)
+
+                # Checking if the source image exists
                 case ["skopeo", "inspect", "--raw", *_]:
                     if not source_image_is_resolved_by_version_release:
                         dest_image = cmd[-1]
@@ -812,15 +822,6 @@ class TestBuildProcess(unittest.TestCase):
                         raise CalledProcessError(-1, "mock cmd", stderr="manifest unknown".encode())
                     else:
                         return CompletedProcess(cmd, int(mock_nonexisting_source_image))
-
-                case ["skopeo", "inspect", "--format", *_]:
-                    if binary_image_does_not_exist_any_more:
-                        ref = source_build.parse_image_name(BINARY_IMAGE_REF)
-                        stderr = f"reading manifest {ref.digest} in {ref.repo}: manifest unknown"
-                        raise CalledProcessError(-1, "mock cmd", stderr=stderr.encode())
-                    else:
-                        # Get the binary image manifest digest
-                        return CompletedProcess(cmd, 0, stdout=BINARY_IMAGE_DIGEST)
 
                 case ["skopeo", "copy", *_]:
                     args = create_skopeo_cli_parser().parse_args(cmd[1:])
@@ -1283,43 +1284,19 @@ class TestResolveSourceImageByManifest(unittest.TestCase):
 
     def test_source_image_is_resolved(self):
         manifest_digest: Final = "sha256:123456"
+        binary_image = f"registry.io:3000/ns/app:1.0@{manifest_digest}"
 
-        tests = [
-            ["registry.io:3000/ns/app:1.0", "registry.io:3000/ns/app:1.0"],
-            [
-                f"registry.io:3000/ns/app:1.0@{manifest_digest}",
-                None,  # skip fetching digest again
-            ],
-        ]
+        with patch("source_build.run") as mock_run:
+            skopeo_inspect_raw_rv = Mock(returncode=0)
+            mock_run.side_effect = [skopeo_inspect_raw_rv]
 
-        for binary_image, expected_skopeo_dest_arg in tests:
-            with patch("source_build.run") as mock_run:
-                skopeo_inspect_digest_rv = Mock(stdout=manifest_digest)
-                skopeo_inspect_raw_rv = Mock(returncode=0)
-
-                if expected_skopeo_dest_arg is None:
-                    # Input binary image already has image digest in reference,
-                    # skip fetching manifest digest again
-                    mock_run.side_effect = [skopeo_inspect_raw_rv]
-                else:
-                    mock_run.side_effect = [skopeo_inspect_digest_rv, skopeo_inspect_raw_rv]
-
-                source_image = source_build.resolve_source_image_by_manifest(binary_image)
-
-                self.assertEqual("registry.io:3000/ns/app:sha256-123456.src", source_image)
-
-                if expected_skopeo_dest_arg is not None:
-                    run_cmd = mock_run.mock_calls[0].args[0]
-                    dest = run_cmd[-1]
-                    self.assertEqual(dest.removeprefix("docker://"), expected_skopeo_dest_arg)
+            source_image = source_build.resolve_source_image_by_manifest(binary_image)
+            self.assertEqual("registry.io:3000/ns/app:sha256-123456.src", source_image)
 
     @patch("source_build.run")
     def test_source_image_does_not_exist(self, mock_run: MagicMock):
-        manifest_digest = "sha256:123456"
-        skopeo_inspect_digest_rv = Mock(stdout=manifest_digest)
-        mock_run.side_effect = [skopeo_inspect_digest_rv, self.called_proc_err]
-
-        source_image = source_build.resolve_source_image_by_manifest("registry.io:3000/ns/app:1.0")
+        mock_run.side_effect = [self.called_proc_err]
+        source_image = source_build.resolve_source_image_by_manifest("registry.io:3000/ns/app:1.0@sha256:123456")
         self.assertIsNone(source_image)
 
 
