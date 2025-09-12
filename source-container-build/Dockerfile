@@ -12,8 +12,8 @@ RUN dnf update -y && dnf install -y python3.11 git jq skopeo file tar && dnf cle
 
 WORKDIR /opt/BuildSourceImage
 COPY $patch0 $patch1 $patch2 $patch3 ./
-RUN cp /cachi2/output/deps/generic/v${BSI_VERSION}.tar.gz . && \
-    tar --extract -f v${BSI_VERSION}.tar.gz -z --strip-components=1 BuildSourceImage-${BSI_VERSION}/BuildSourceImage.sh && \
+RUN cp /cachi2/output/deps/generic/BuildSourceImage-${BSI_VERSION}.tar.gz . && \
+    tar --extract -f BuildSourceImage-${BSI_VERSION}.tar.gz -z --strip-components=1 BuildSourceImage-${BSI_VERSION}/BuildSourceImage.sh && \
     git apply --allow-empty BuildSourceImage.sh $patch0 $patch1 $patch2 $patch3 && \
     rm -r $patch0 $patch1 $patch2 $patch3 && \
     mv BuildSourceImage.sh bsi
