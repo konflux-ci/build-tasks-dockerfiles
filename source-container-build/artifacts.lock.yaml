@@ -1,0 +1,6 @@
+metadata:
+  version: "1.0"
+artifacts:
+  - download_url: "https://github.com/containers/BuildSourceImage/archive/refs/tags/v0.2.0.tar.gz"
+    checksum: "sha256:e770a8c7e77f821f8d842312aa1bca7dd869debf8a31f5fa1af28f6c494e0529"
+    filename: "v0.2.0.tar.gz"
