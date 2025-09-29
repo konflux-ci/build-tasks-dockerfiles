@@ -43,6 +43,11 @@ spec:
             description: "custom bundle for source build pipeline"
         steps:
           - name: e2e-tests
+            computeResources:
+              requests:
+                memory: 4Gi
+              limits:
+                memory: 6Gi
             image: quay.io/konflux-ci/appstudio-utils:1df9af1160526ef9d75cd26809a8ee2ef7c37750@sha256:b923beb77ac0ede219bcacadeeeebba87d78684c11f9b56f9fc75225ded5550e
             env:
             - name: SNAPSHOT
