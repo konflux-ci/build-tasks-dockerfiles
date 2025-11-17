@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6-1755695350
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.7-1763362218
 ENV HOME=/root
 RUN microdnf install -y rsync openssh-clients buildah podman
 
