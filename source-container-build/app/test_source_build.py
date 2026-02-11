@@ -25,7 +25,6 @@ from test_utils import BlobTypeString, create_simple_oci_image
 
 import pytest
 
-
 FAKE_BSI: Final = "/testing/bsi"
 BINARY_IMAGE_DIGEST: Final = "sha256:87e8e87"
 BINARY_IMAGE_REF: Final = f"registry/ns/app:v1@{BINARY_IMAGE_DIGEST}"
@@ -985,12 +984,10 @@ class TestBuildProcess(unittest.TestCase):
         )
 
     def test_skip_handling_local_image(self):
-        parent_images = textwrap.dedent(
-            """\
+        parent_images = textwrap.dedent("""\
             registry.io/ubi9/ubi:9.3-1@sha256:123
             localhost/konflux-final-image@sha256:123
-            """
-        )
+            """)
         self._test_include_sources(parent_images=parent_images, expect_parent_image_sources_included=False)
 
     @patch("source_build.run")
