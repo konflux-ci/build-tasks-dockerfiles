@@ -1,2 +1,7 @@
 filetype
 backoff
+
+# needed for the 'filetype', since python3.12 removed 'distutils'
+# and we had python3.11 in the previous base image
+setuptools
+wheel
