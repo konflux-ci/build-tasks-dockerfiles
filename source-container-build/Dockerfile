@@ -34,4 +34,5 @@ RUN cp /cachi2/output/deps/generic/BuildSourceImage-${BSI_VERSION}.tar.gz . && \
 WORKDIR /opt/source_build/
 COPY --chown=1000:0 app/source_build.py app/requirements.txt ./
 RUN python3.12 -m venv appenv && \
+    ./appenv/bin/pip uninstall -y setuptools wheel && \
     ./appenv/bin/python3 -m pip install --no-cache-dir -r ./requirements.txt
