@@ -25,7 +25,6 @@ from tarfile import TarInfo
 from typing import Any, TypedDict, NotRequired, Literal, Final, Dict
 from urllib.parse import urlparse
 
-
 """
 Requires: git, skopeo, tar, BuildSourceImage
 """
