@@ -48,7 +48,7 @@ spec:
                 memory: 4Gi
               limits:
                 memory: 6Gi
-            image: quay.io/konflux-ci/appstudio-utils:1df9af1160526ef9d75cd26809a8ee2ef7c37750@sha256:b923beb77ac0ede219bcacadeeeebba87d78684c11f9b56f9fc75225ded5550e
+            image: quay.io/konflux-ci/appstudio-utils:4b2d7c21c248df18a523f0e210f345eb463d61c1@sha256:a62a98368ac9d8f13026bc928510e0757d7242048797440916a1564eab5256c7
             env:
             - name: SNAPSHOT
               value: $(params.SNAPSHOT)
