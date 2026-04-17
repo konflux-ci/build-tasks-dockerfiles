@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/ubi:9.6-1752587049
+FROM registry.access.redhat.com/ubi9/ubi:9.7-1776315208
 
 ARG BSI_VERSION=0.2.0
 ARG bsi_source=https://github.com/containers/BuildSourceImage/archive/refs/tags/v${BSI_VERSION}.tar.gz
@@ -8,7 +8,7 @@ ARG patch2=0001-Use-extra-src-archive-checksum-in-filename.patch
 ARG patch3=0001-Set-mediaType-on-image-manifest.patch
 
 # hadolint ignore=DL3041
-RUN dnf update -y && dnf install -y python3.11 git jq skopeo file tar && dnf clean all
+RUN dnf update -y && dnf install -y python3.11 git-core jq skopeo file tar && dnf clean all
 
 WORKDIR /opt/BuildSourceImage
 COPY $patch0 $patch1 $patch2 $patch3 ./
