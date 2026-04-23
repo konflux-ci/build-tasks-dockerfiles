@@ -48,12 +48,19 @@ spec:
                 memory: 4Gi
               limits:
                 memory: 6Gi
-            image: quay.io/konflux-ci/appstudio-utils:4b2d7c21c248df18a523f0e210f345eb463d61c1@sha256:a62a98368ac9d8f13026bc928510e0757d7242048797440916a1564eab5256c7
+            image: quay.io/konflux-ci/task-runner:1.6.0@sha256:1abfe4e50d4e961d0fd9790202565f93ee650fe8dfc50932c94989acba10485f
+            securityContext:
+              runAsUser: 0
+              runAsNonRoot: false
             env:
             - name: SNAPSHOT
               value: $(params.SNAPSHOT)
             script: |
-              set -e
+              set -euo pipefail
+
+              # Go is required by the e2e-tests repo (mage build tool), but (as of now) is not included in task-runner
+              microdnf -y install golang
+
               echo "SNAPSHOT: ${SNAPSHOT}"
               export SOURCE_BUILD_IMAGE=$(jq -r '.components[] | select(.name == "source-container-build") | .containerImage' <<< "$SNAPSHOT")
               git clone --branch main https://github.com/konflux-ci/e2e-tests.git
