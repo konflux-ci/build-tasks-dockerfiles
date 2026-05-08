@@ -19,7 +19,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     
     - name: Log in to Red Hat Registry
       uses: redhat-actions/podman-login@v1
