@@ -22,7 +22,7 @@ jobs:
       uses: actions/checkout@v4
     
     - name: Log in to Red Hat Registry
-      uses: redhat-actions/podman-login@v1
+      uses: redhat-actions/podman-login@v2
       with:
         registry: registry.redhat.io
         username: ${{ secrets.REGISTRY_REDHAT_IO_USER }}
