@@ -9,28 +9,28 @@ on:
 env:
   REGISTRY: quay.io/redhat-appstudio
   IMAGE_NAME: update-infra-deployments-task-script-image
-  
+
 jobs:
   build-on-pr:
     runs-on: ubuntu-latest
     if: >
       github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion == 'success'
-    
+
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
-    
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
     - name: Log in to Red Hat Registry
-      uses: redhat-actions/podman-login@v1
+      uses: redhat-actions/podman-login@50c2d9a331bb67c8fdab99b86455fad05e2e3252 # v2.0
       with:
         registry: registry.redhat.io
         username: ${{ secrets.REGISTRY_REDHAT_IO_USER }}
         password: ${{ secrets.REGISTRY_REDHAT_IO_PASSWORD }}
-    
+
     - name: Build Image
       id: build-image
-      uses: redhat-actions/buildah-build@v2
+      uses: redhat-actions/buildah-build@3a51aade9afa17e5c78256bcbe2e1ee08c7b995b # v3.0.2
       with:
         image: ${{ env.IMAGE_NAME }}
         tags: ${{ github.sha }}
