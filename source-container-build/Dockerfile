@@ -1,3 +1,4 @@
+FROM quay.io/konflux-ci/task-runner:1.8.1@sha256:b9ef0479b57a494368a12a02886c650314c9ac7391c6228f21065865aab71c9e AS tools
 FROM registry.access.redhat.com/ubi9/ubi:9.7-1776315208
 
 ARG BSI_VERSION=0.2.0
@@ -9,6 +10,9 @@ ARG patch3=0001-Set-mediaType-on-image-manifest.patch
 
 # hadolint ignore=DL3041
 RUN dnf update -y && dnf install -y python3.11 git-core jq skopeo file tar && dnf clean all
+
+COPY --from=tools /usr/local/bin/cosign /usr/local/bin/cosign
+COPY --from=tools /usr/local/bin/select-oci-auth /usr/local/bin/select-oci-auth
 
 WORKDIR /opt/BuildSourceImage
 COPY $patch0 $patch1 $patch2 $patch3 ./
