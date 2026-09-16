@@ -1,6 +1,6 @@
 # Source Container Build
 
-Used by [source build task](https://github.com/konflux-ci/build-definitions/tree/main/task/source-build) in Konflux pipelines.
+Used by [source build task](https://github.com/konflux-ci/container-build-catalog/blob/main/task/source-build/source-build.yaml) in Konflux pipelines.
 
 ## Build Image
 
