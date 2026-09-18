@@ -546,6 +546,70 @@ class TestGatherPrefetchedSources(unittest.TestCase):
         ]
         self._test_gather_deps_by_package_manager(gomod_deps, [".zip"])
 
+    def test_gather_cargo_deps(self):
+        """cargo vendors dependencies as unpacked source trees (.rs/.toml files and
+        directories) rather than archives, so the whole tree must be gathered even
+        though the individual files don't match ARCHIVE_MIMETYPES."""
+        self._mark_prefetch_has_run()
+        cargo_dir = os.path.join(self.prefetch_output_dir, "deps", "cargo", "cryptography-42.0.0")
+        os.makedirs(os.path.join(cargo_dir, "src"))
+        cargo_files = {
+            "Cargo.toml": '[package]\nname = "cryptography-rust"\n',
+            "src/lib.rs": "pub fn hello() {}\n",
+            ".cargo-checksum.json": "{}",
+        }
+        for rel_path, content in cargo_files.items():
+            with open(os.path.join(cargo_dir, rel_path), "w") as f:
+                f.write(content)
+        # An incidental archive inside a crate (e.g. a test fixture) must be
+        # included as well, not treated as the only cargo source.
+        with tarfile.open(os.path.join(cargo_dir, "src", "testdata.tar.gz"), "w:gz"):
+            pass
+
+        sib_dirs = SourceImageBuildDirectories()
+        result = source_build.gather_prefetched_sources(self.work_dir, self.prefetch_dir, sib_dirs)
+        self.assertTrue(result)
+
+        self.assertListEqual(
+            [os.path.join(self.work_dir, "prefetched_sources", "src-0")],
+            sib_dirs.extra_src_dirs,
+        )
+        gathered = []
+        for dir_path, _, file_names in os.walk(sib_dirs.extra_src_dirs[0]):
+            gathered.extend(file_names)
+        self.assertListEqual(
+            sorted(["Cargo.toml", "lib.rs", ".cargo-checksum.json", "testdata.tar.gz"]),
+            sorted(gathered),
+        )
+
+    def test_gather_cargo_deps_skips_escaping_symlink(self):
+        """A prefetched dependency must not be able to exfiltrate host files: a
+        symlink whose target resolves outside the package manager tree is
+        skipped rather than followed and copied into the source image."""
+        self._mark_prefetch_has_run()
+        cargo_dir = os.path.join(self.prefetch_output_dir, "deps", "cargo", "evil-1.0.0")
+        os.makedirs(cargo_dir)
+        with open(os.path.join(cargo_dir, "Cargo.toml"), "w") as f:
+            f.write('[package]\nname = "evil"\n')
+
+        # A readable file outside the prefetched tree that a malicious
+        # dependency tries to point at.
+        secret = os.path.join(self.prefetch_dir, "secret.txt")
+        with open(secret, "w") as f:
+            f.write("super secret host content")
+        os.symlink(secret, os.path.join(cargo_dir, "leak.txt"))
+
+        sib_dirs = SourceImageBuildDirectories()
+        result = source_build.gather_prefetched_sources(self.work_dir, self.prefetch_dir, sib_dirs)
+        self.assertTrue(result)
+
+        gathered = []
+        for dir_path, _, file_names in os.walk(sib_dirs.extra_src_dirs[0]):
+            gathered.extend(file_names)
+        # Only the real crate file is gathered; the escaping symlink is skipped
+        # and the secret content never lands in an extra source directory.
+        self.assertListEqual(["Cargo.toml"], gathered)
+
     def test_gather_srpm_deps_unique(self):
         srpm_deps = {
             "output/sources/x86_64/fedora-source/gpm-1.20.7-42.fc38.src.rpm": os.urandom(4),

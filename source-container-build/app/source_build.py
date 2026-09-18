@@ -45,6 +45,12 @@ ARCHIVE_MIMETYPES = (
     "application/zip",
 )
 
+# Package managers whose prefetched sources are stored as unpacked source trees
+# (e.g. `cargo vendor` writes crates as directories of .rs/.toml files) rather
+# than as archives. Their individual source files don't match ARCHIVE_MIMETYPES,
+# so every file in the directory must be collected
+UNPACKED_SOURCE_PACKAGE_MANAGERS: Final = ("cargo",)
+
 MAX_RETRIES: Final = 5
 SUBPROCESS_BACKOFF_FACTOR: Final = 2
 SUBPROCESS_MAX_RETRIES: Final = 10
@@ -309,6 +315,17 @@ def create_dir(*components) -> str:
     return path
 
 
+def _is_within_directory(path: str, directory: str) -> bool:
+    """Return True if ``path`` resolves to a location inside ``directory``.
+
+    Symlinks are fully resolved before the check, so a link whose target
+    escapes ``directory`` (e.g. points at a host file) is reported as outside.
+    """
+    real_dir = os.path.realpath(directory)
+    real_path = os.path.realpath(path)
+    return os.path.commonpath([real_dir, real_path]) == real_dir
+
+
 def gather_prefetched_sources(work_dir: str, prefetch_dir: str, sib_dirs: SourceImageBuildDirectories) -> bool:
     log = logging.getLogger("source-build.prefetched-sources")
     gathered = False
@@ -329,9 +346,24 @@ def gather_prefetched_sources(work_dir: str, prefetch_dir: str, sib_dirs: Source
 
         for package_manager in used_package_managers:
             package_manager_dir = os.path.join(prefetch_deps_dir, package_manager)
+            # Package managers that vendor unpacked source trees (e.g. cargo)
+            # store sources as plain files that don't match ARCHIVE_MIMETYPES, so
+            # gather the whole tree instead of filtering by archive mime type.
+            include_all = package_manager in UNPACKED_SOURCE_PACKAGE_MANAGERS
             for root, _, files in os.walk(package_manager_dir):
                 for filename in files:
                     filepath = os.path.join(root, filename)
+                    # A prefetched dependency could contain a symlink pointing
+                    # outside its own tree (e.g. at an arbitrary readable host
+                    # file). Copying such an entry would follow the link and leak
+                    # the target's bytes into the source image, so skip any
+                    # symlink that escapes the package manager directory.
+                    if os.path.islink(filepath) and not _is_within_directory(filepath, package_manager_dir):
+                        log.warning("Skipping symlink escaping prefetched tree: %s", filepath)
+                        continue
+                    if include_all:
+                        prefetched_sources[package_manager].append(filepath)
+                        continue
                     mimetype = guess_mime(filepath)
 
                     if mimetype and mimetype in ARCHIVE_MIMETYPES:
