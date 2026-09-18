@@ -45,6 +45,12 @@ ARCHIVE_MIMETYPES = (
     "application/zip",
 )
 
+# Package managers whose prefetched sources are stored as unpacked source trees
+# (e.g. `cargo vendor` writes crates as directories of .rs/.toml files) rather
+# than as archives. Their individual source files don't match ARCHIVE_MIMETYPES,
+# so every file in the directory must be collected
+UNPACKED_SOURCE_PACKAGE_MANAGERS: Final = ("cargo",)
+
 MAX_RETRIES: Final = 5
 SUBPROCESS_BACKOFF_FACTOR: Final = 2
 SUBPROCESS_MAX_RETRIES: Final = 10
@@ -329,9 +335,16 @@ def gather_prefetched_sources(work_dir: str, prefetch_dir: str, sib_dirs: Source
 
         for package_manager in used_package_managers:
             package_manager_dir = os.path.join(prefetch_deps_dir, package_manager)
+            # Package managers that vendor unpacked source trees (e.g. cargo)
+            # store sources as plain files that don't match ARCHIVE_MIMETYPES, so
+            # gather the whole tree instead of filtering by archive mime type.
+            include_all = package_manager in UNPACKED_SOURCE_PACKAGE_MANAGERS
             for root, _, files in os.walk(package_manager_dir):
                 for filename in files:
                     filepath = os.path.join(root, filename)
+                    if include_all:
+                        prefetched_sources[package_manager].append(filepath)
+                        continue
                     mimetype = guess_mime(filepath)
 
                     if mimetype and mimetype in ARCHIVE_MIMETYPES:
@@ -361,7 +374,9 @@ def gather_prefetched_sources(work_dir: str, prefetch_dir: str, sib_dirs: Source
             os.makedirs(dest_dirs, exist_ok=True)
             dest = f"{copy_dest_dir}/{relative_path_to_src}"
             log.debug("copy prefetched source %s to %s", src_filepath, dest)
-            shutil.copy(src_filepath, dest)
+            # Preserve symlinks verbatim: following a link whose target escapes
+            # the tree would leak the target's bytes into the source image.
+            shutil.copy(src_filepath, dest, follow_symlinks=False)
         sib_dirs.extra_src_dirs.append(f"{prepared_sources_dir}/{src_dir}")
 
     sib_dirs.rpm_dir = create_dir(work_dir, "bsi_rpms_dir")
