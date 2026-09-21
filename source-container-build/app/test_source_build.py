@@ -546,6 +546,77 @@ class TestGatherPrefetchedSources(unittest.TestCase):
         ]
         self._test_gather_deps_by_package_manager(gomod_deps, [".zip"])
 
+    def test_gather_cargo_deps(self):
+        """cargo vendors dependencies as unpacked source trees (.rs/.toml files and
+        directories) rather than archives, so the whole tree must be gathered even
+        though the individual files don't match ARCHIVE_MIMETYPES."""
+        self._mark_prefetch_has_run()
+        cargo_dir = os.path.join(self.prefetch_output_dir, "deps", "cargo", "cryptography-42.0.0")
+        os.makedirs(os.path.join(cargo_dir, "src"))
+        cargo_files = {
+            "Cargo.toml": '[package]\nname = "cryptography-rust"\n',
+            "src/lib.rs": "pub fn hello() {}\n",
+            ".cargo-checksum.json": "{}",
+        }
+        for rel_path, content in cargo_files.items():
+            with open(os.path.join(cargo_dir, rel_path), "w") as f:
+                f.write(content)
+        # An incidental archive inside a crate (e.g. a test fixture) must be
+        # included as well, not treated as the only cargo source.
+        with tarfile.open(os.path.join(cargo_dir, "src", "testdata.tar.gz"), "w:gz"):
+            pass
+
+        sib_dirs = SourceImageBuildDirectories()
+        result = source_build.gather_prefetched_sources(self.work_dir, self.prefetch_dir, sib_dirs)
+        self.assertTrue(result)
+
+        self.assertListEqual(
+            [os.path.join(self.work_dir, "prefetched_sources", "src-0")],
+            sib_dirs.extra_src_dirs,
+        )
+        gathered = []
+        for dir_path, _, file_names in os.walk(sib_dirs.extra_src_dirs[0]):
+            gathered.extend(file_names)
+        self.assertListEqual(
+            sorted(["Cargo.toml", "lib.rs", ".cargo-checksum.json", "testdata.tar.gz"]),
+            sorted(gathered),
+        )
+
+    def test_gather_cargo_deps_preserves_symlink_without_following(self):
+        """A prefetched dependency could contain a symlink whose target resolves
+        outside the package manager tree. Dropping it would modify the original
+        sources, so it is preserved as a symlink, verbatim -- never dereferenced,
+        so the target's bytes never land in the source image."""
+        self._mark_prefetch_has_run()
+        cargo_dir = os.path.join(self.prefetch_output_dir, "deps", "cargo", "evil-1.0.0")
+        os.makedirs(cargo_dir)
+        with open(os.path.join(cargo_dir, "Cargo.toml"), "w") as f:
+            f.write('[package]\nname = "evil"\n')
+
+        # A readable file outside the prefetched tree that a malicious
+        # dependency tries to point at.
+        secret = os.path.join(self.prefetch_dir, "secret.txt")
+        with open(secret, "w") as f:
+            f.write("super secret host content")
+        os.symlink(secret, os.path.join(cargo_dir, "leak.txt"))
+
+        sib_dirs = SourceImageBuildDirectories()
+        result = source_build.gather_prefetched_sources(self.work_dir, self.prefetch_dir, sib_dirs)
+        self.assertTrue(result)
+
+        gathered = []
+        for dir_path, _, file_names in os.walk(sib_dirs.extra_src_dirs[0]):
+            gathered.extend(file_names)
+        # Both the crate file and the link are gathered, keeping the tree intact.
+        self.assertListEqual(sorted(["Cargo.toml", "leak.txt"]), sorted(gathered))
+
+        # The link is preserved as a symlink pointing at the same target rather
+        # than dereferenced into a regular file, so the secret's bytes are never
+        # copied into the gathered tree.
+        gathered_link = os.path.join(sib_dirs.extra_src_dirs[0], "deps", "cargo", "evil-1.0.0", "leak.txt")
+        self.assertTrue(os.path.islink(gathered_link))
+        self.assertEqual(os.readlink(gathered_link), secret)
+
     def test_gather_srpm_deps_unique(self):
         srpm_deps = {
             "output/sources/x86_64/fedora-source/gpm-1.20.7-42.fc38.src.rpm": os.urandom(4),
